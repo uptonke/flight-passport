@@ -71,7 +71,7 @@
             <div class="text-xs text-gray-400 uppercase font-bold">近期日誌</div>
         </div>
         <div class="flex gap-2 overflow-x-auto pb-2 mb-2 shrink-0 text-xs font-bold" id="year-filters">
-            </div>
+        </div>
         <div id="flight-list" class="overflow-y-auto space-y-2 pr-1 flex-1 pb-2"></div>
     </div>
 </div>
@@ -115,29 +115,30 @@
                     <div class="text-5xl font-light tracking-tighter" id="pp-time-main">0<span class="text-2xl text-gray-500">h</span> 0<span class="text-2xl text-gray-500">m</span></div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mt-6">
-                    <div class="bg-white/5 p-3 rounded-xl">
+                    <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center">
                         <div class="text-[10px] text-gray-400 uppercase">Days in air</div>
-                        <div class="text-xl font-bold" id="pp-days">0</div>
+                        <div class="text-xl font-bold leading-none mt-1" id="pp-days">0</div>
                     </div>
-                    <div class="bg-white/5 p-3 rounded-xl">
+                    <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center">
                         <div class="text-[10px] text-gray-400 uppercase">Avg Flight</div>
-                        <div class="text-xl font-bold" id="pp-avg-time">0h</div>
+                        <div class="text-xl font-bold leading-none mt-1" id="pp-avg-time">0h</div>
                     </div>
-                    <div class="bg-white/5 p-3 rounded-xl border border-[#5e35b1]/30">
+                    <div class="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-center">
                         <div class="text-[10px] text-gray-400 uppercase">In Air</div>
-                        <div class="text-lg font-bold" id="pp-in-air">0h</div>
+                        <div class="text-xl font-bold leading-none mt-1" id="pp-in-air">0h</div>
                     </div>
-                   <div class="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-center">
-                        <div class="flex justify-between items-baseline mb-1">
-                            <span class="text-[10px] text-gray-400 uppercase">Total Flights</span>
-                            <span class="text-lg font-bold" id="pp-total-flights-box">0</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-gray-500">
-                            <span>Dom: <span id="pp-dom" class="font-bold text-gray-300">0</span></span>
-                            <span>Int: <span id="pp-int" class="font-bold text-sky-400">0</span></span>
-                            <span>Long: <span id="pp-long" class="font-bold text-[#facc15]">0</span></span>
+                    <div class="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-between">
+                        <div class="text-[10px] text-gray-400 uppercase">Total Flights</div>
+                        <div class="flex justify-between items-end mt-1">
+                            <span class="text-2xl font-bold leading-none" id="pp-total-flights-box">0</span>
+                            <div class="text-[9px] text-gray-500 text-right leading-tight">
+                                Dom <span id="pp-dom" class="font-bold text-gray-300">0</span><br>
+                                Int <span id="pp-int" class="font-bold text-sky-400">0</span><br>
+                                Lng <span id="pp-long" class="font-bold text-[#facc15]">0</span>
+                            </div>
                         </div>
                     </div>
+                </div>
             </div>
         </div>
 
@@ -191,6 +192,13 @@
             </div>
             <div>
                 <div class="flex items-baseline gap-2 mb-4">
+                    <div class="text-3xl font-black" id="pp-total-routes">0</div>
+                    <div class="text-gray-400 font-bold">Top Routes</div>
+                </div>
+                <div id="list-routes" class="space-y-3"></div>
+            </div>
+            <div>
+                <div class="flex items-baseline gap-2 mb-4">
                     <div class="text-3xl font-black" id="pp-total-airports">0</div>
                     <div class="text-gray-400 font-bold">Total Airports</div>
                 </div>
@@ -202,13 +210,6 @@
                     <div class="text-gray-400 font-bold">Total Airlines</div>
                 </div>
                 <div id="list-airlines" class="space-y-3"></div>
-            </div>
-            <div>
-                <div class="flex items-baseline gap-2 mb-4">
-                    <div class="text-3xl font-black" id="pp-total-routes">0</div>
-                    <div class="text-gray-400 font-bold">Total Airports (Routes)</div>
-                </div>
-                <div id="list-routes" class="space-y-3"></div>
             </div>
         </div>
 
@@ -271,7 +272,7 @@
                 </div>
             </div>
             <div class="flex items-center pt-2">
-                <input type="checkbox" id="inp-exit-row" class="w-4 h-4 rounded bg-white/10 border-white/10 text-sky-500 cursor-pointer">
+                <input type="checkbox" id="inp-exit-row" class="w-4 h-4 rounded bg-white/10 border border-white/10 text-sky-500 cursor-pointer">
                 <label for="inp-exit-row" class="ml-2 text-sm text-gray-300 cursor-pointer">逃生門 (Exit Row)</label>
             </div>
             <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4">寫入護照</button>
@@ -339,9 +340,10 @@
             Object.keys(map.getStyle().sources).forEach(s => { if (s.startsWith('r-')) map.removeSource(s); });
         }
 
+        // 🔥 將統計變數在函數內宣告，確保切換年份時歸零
         let totalKm = 0, totalHours = 0, completedFlights = 0;
-        let shortest = { route: '', dist: Infinity }, longest = { route: '', dist: -Infinity };
         let domCount = 0, intCount = 0, longCount = 0;
+        let shortest = { route: '', dist: Infinity }, longest = { route: '', dist: -Infinity };
         let freq = { airports: {}, airlines: {}, routes: {}, countries: {}, aircrafts: {} };
         let routeFreq = {};
         
@@ -389,7 +391,7 @@
                                     <button onclick="deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
                                 </div>
                             </div>
-                          <div class="text-[10px] text-gray-400 truncate">${f.airline||''}${f.flight_number||''} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
+                            <div class="text-[10px] text-gray-400 truncate">${f.airline||''}${f.flight_number||''} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
                         </div>
                     </div>`;
 
@@ -404,10 +406,10 @@
                     if(f.is_exit_row) { seatStats.exitRows++; }
                     
                     completedFlights++;
-                    completedFlights++;
-                    // 🔥 新增：判斷國內/國際與長程
-                    if(orig.country === dest.country) domCount++; else intCount++;
+                    // 🔥 精準計算國內外與長程航班
+                    if(orig.country && dest.country && orig.country === dest.country) domCount++; else intCount++;
                     if(dist >= 4000) longCount++;
+
                     if(dist < shortest.dist) shortest = { route: routeName, dist: dist };
                     if(dist > longest.dist) longest = { route: routeName, dist: dist };
                     freq.airports[f.origin_code] = (freq.airports[f.origin_code]||0)+1;
@@ -442,16 +444,16 @@
         document.getElementById('pp-earth-bar').style.width = `${Math.min(earthRatio * 100, 100)}%`;
         document.getElementById('pp-moon-bar').style.width = `${Math.min(moonRatio * 100, 100)}%`;
 
-        const taxiHours = completedFlights * 0.5;
-        const inAirHours = Math.max(0, totalHours - taxiHours);
         const avgHours = completedFlights ? (totalHours / completedFlights) : 0;
-        
         const hrs = Math.floor(totalHours);
         const mins = Math.round((totalHours - hrs) * 60);
+        
         document.getElementById('pp-time-main').innerHTML = `${hrs}<span class="text-2xl text-gray-500">h</span> ${mins}<span class="text-2xl text-gray-500">m</span>`;
         document.getElementById('pp-days').innerText = (totalHours / 24).toFixed(1);
         document.getElementById('pp-avg-time').innerText = `${Math.floor(avgHours)}h ${Math.round((avgHours-Math.floor(avgHours))*60)}m`;
-        document.getElementById('pp-in-air').innerText = `${Math.floor(inAirHours)}h ${Math.round((inAirHours-Math.floor(inAirHours))*60)}m`;
+        document.getElementById('pp-in-air').innerText = `${Math.floor(totalHours)}h ${Math.round((totalHours-Math.floor(totalHours))*60)}m`;
+
+        // 🔥 將統計數據推送到 UI 上
         document.getElementById('pp-total-flights-box').innerText = completedFlights;
         document.getElementById('pp-dom').innerText = domCount;
         document.getElementById('pp-int').innerText = intCount;
@@ -498,8 +500,8 @@
                 return `
                     <div class="flex items-center text-sm">
                         ${logoDisplay}
-                        <div class="w-40 min-w-[160px] font-bold truncate pr-2">${name}</div>
-                        <div class="flex-1 flex items-center">
+                        <div class="w-32 sm:w-40 font-bold truncate pr-2 flex-shrink-0">${name}</div>
+                        <div class="flex-1 flex items-center min-w-0">
                             <div class="${colorClass} h-6 rounded-r-md bar-fill flex items-center px-2 text-white font-bold text-xs" style="width: ${widthPercent}%">${count}</div>
                         </div>
                     </div>`;
@@ -508,9 +510,9 @@
         };
 
         document.getElementById('pp-total-aircraft').innerText = renderList(freq.aircrafts, 'list-aircraft', 'bg-emerald-600');
+        document.getElementById('pp-total-routes').innerText = renderList(freq.routes, 'list-routes', 'bg-[#5e35b1]');
         document.getElementById('pp-total-airports').innerText = renderList(freq.airports, 'list-airports', 'bg-[#7e57c2]');
         document.getElementById('pp-total-airlines').innerText = renderList(freq.airlines, 'list-airlines', 'bg-sky-600', true);
-        document.getElementById('pp-total-routes').innerText = renderList(freq.routes, 'list-routes', 'bg-[#5e35b1]');
     }
 
     map.on('load', async () => {
@@ -522,20 +524,33 @@
         
         currentFlights = flights; 
 
-        // 🔥 新增：動態提取日期並生成年份 Filter 按鈕
         const years = new Set();
         currentFlights.forEach(f => {
             if (f.flight_date) {
                 years.add(f.flight_date.substring(0, 4));
             }
         });
-        const sortedYears = Array.from(years).sort().reverse(); // 由大到小排序
+        const sortedYears = Array.from(years).sort().reverse(); 
         
         let filterHTML = `<button onclick="filterByYear('ALL')" class="bg-white/20 px-3 py-1 rounded-full text-white">ALL</button>`;
         sortedYears.forEach(year => {
             filterHTML += `<button onclick="filterByYear('${year}')" class="bg-white/5 hover:bg-white/10 px-3 py-1 rounded-full text-gray-400">${year}</button>`;
         });
         document.getElementById('year-filters').innerHTML = filterHTML;
+
+        // 🔥 啟動 Google Earth 級別自轉 (只有初始載入時啟動一次)
+        let spinEnabled = true;
+        function spinGlobe() {
+            const zoom = map.getZoom();
+            if (spinEnabled && !map.isZooming() && !map.isInteracting() && zoom < 5) {
+                let distancePerSecond = 360 / 120;
+                map.easeTo({ bearing: map.getBearing() + distancePerSecond * (1000/60), duration: 1000, easing: (n) => n });
+            }
+            requestAnimationFrame(spinGlobe);
+        }
+        spinGlobe();
+        map.on('mousedown', () => spinEnabled = false);
+        map.on('mouseup', () => spinEnabled = true);
 
         renderMapAndData(); 
     });
@@ -566,10 +581,10 @@
         document.getElementById('inp-origin').value = flight.origin_code || '';
         document.getElementById('inp-dest').value = flight.dest_code || '';
         document.getElementById('inp-airline').value = flight.airline || '';
+        document.getElementById('inp-flight-number').value = flight.flight_number || '';
         document.getElementById('inp-seat').value = flight.seat || '';
         document.getElementById('inp-type').value = flight.aircraft_type || '';
         document.getElementById('inp-status').value = flight.status || '已完成';
-        document.getElementById('inp-flight-number').value = flight.flight_number || '';
         
         if(flight.flight_hours) {
             const h = Math.floor(flight.flight_hours);
