@@ -127,11 +127,17 @@
                         <div class="text-[10px] text-gray-400 uppercase">In Air</div>
                         <div class="text-lg font-bold" id="pp-in-air">0h</div>
                     </div>
-                    <div class="bg-white/5 p-3 rounded-xl border border-white/5">
-                        <div class="text-[10px] text-gray-400 uppercase">Taxiing (Est.)</div>
-                        <div class="text-lg font-bold text-gray-400" id="pp-taxi">0h</div>
+                   <div class="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-center">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <span class="text-[10px] text-gray-400 uppercase">Total Flights</span>
+                            <span class="text-lg font-bold" id="pp-total-flights-box">0</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-gray-500">
+                            <span>Dom: <span id="pp-dom" class="font-bold text-gray-300">0</span></span>
+                            <span>Int: <span id="pp-int" class="font-bold text-sky-400">0</span></span>
+                            <span>Long: <span id="pp-long" class="font-bold text-[#facc15]">0</span></span>
+                        </div>
                     </div>
-                </div>
             </div>
         </div>
 
@@ -335,6 +341,7 @@
 
         let totalKm = 0, totalHours = 0, completedFlights = 0;
         let shortest = { route: '', dist: Infinity }, longest = { route: '', dist: -Infinity };
+        let domCount = 0, intCount = 0, longCount = 0;
         let freq = { airports: {}, airlines: {}, routes: {}, countries: {}, aircrafts: {} };
         let routeFreq = {};
         
@@ -397,6 +404,10 @@
                     if(f.is_exit_row) { seatStats.exitRows++; }
                     
                     completedFlights++;
+                    completedFlights++;
+                    // 🔥 新增：判斷國內/國際與長程
+                    if(orig.country === dest.country) domCount++; else intCount++;
+                    if(dist >= 4000) longCount++;
                     if(dist < shortest.dist) shortest = { route: routeName, dist: dist };
                     if(dist > longest.dist) longest = { route: routeName, dist: dist };
                     freq.airports[f.origin_code] = (freq.airports[f.origin_code]||0)+1;
@@ -441,7 +452,10 @@
         document.getElementById('pp-days').innerText = (totalHours / 24).toFixed(1);
         document.getElementById('pp-avg-time').innerText = `${Math.floor(avgHours)}h ${Math.round((avgHours-Math.floor(avgHours))*60)}m`;
         document.getElementById('pp-in-air').innerText = `${Math.floor(inAirHours)}h ${Math.round((inAirHours-Math.floor(inAirHours))*60)}m`;
-        document.getElementById('pp-taxi').innerText = `${Math.floor(taxiHours)}h ${Math.round((taxiHours-Math.floor(taxiHours))*60)}m`;
+        document.getElementById('pp-total-flights-box').innerText = completedFlights;
+        document.getElementById('pp-dom').innerText = domCount;
+        document.getElementById('pp-int').innerText = intCount;
+        document.getElementById('pp-long').innerText = longCount;
 
         const classColors = { 'Economy': '#bae6fd', 'Premium Economy': '#7dd3fc', 'Business': '#0284c7', 'First Class': '#082f49' };
         const typeColors = { 'Window': '#3b82f6', 'Middle': '#f59e0b', 'Aisle': '#22c55e' };
