@@ -8,7 +8,6 @@
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
     <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
@@ -225,8 +224,9 @@
                 <div><label class="block text-xs text-gray-400 mb-1">出發地(IATA)</label><input type="text" id="inp-origin" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">目的地(IATA)</label><input type="text" id="inp-dest" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">航空公司</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2"></div>
+            <div class="grid grid-cols-3 gap-4">
+                <div><label class="block text-xs text-gray-400 mb-1">航空公司</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="BR"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">航班編號</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="87"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">座位</label><input type="text" id="inp-seat" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase"></div>
             </div>
             
@@ -382,7 +382,7 @@
                                     <button onclick="deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
                                 </div>
                             </div>
-                            <div class="text-[10px] text-gray-400 truncate">${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
+                          <div class="text-[10px] text-gray-400 truncate">${f.airline||''}${f.flight_number||''} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
                         </div>
                     </div>`;
 
@@ -484,7 +484,7 @@
                 return `
                     <div class="flex items-center text-sm">
                         ${logoDisplay}
-                       <div class="w-40 min-w-[160px] font-bold truncate pr-2">${name}</div>
+                        <div class="w-40 min-w-[160px] font-bold truncate pr-2">${name}</div>
                         <div class="flex-1 flex items-center">
                             <div class="${colorClass} h-6 rounded-r-md bar-fill flex items-center px-2 text-white font-bold text-xs" style="width: ${widthPercent}%">${count}</div>
                         </div>
@@ -555,6 +555,7 @@
         document.getElementById('inp-seat').value = flight.seat || '';
         document.getElementById('inp-type').value = flight.aircraft_type || '';
         document.getElementById('inp-status').value = flight.status || '已完成';
+        document.getElementById('inp-flight-number').value = flight.flight_number || '';
         
         if(flight.flight_hours) {
             const h = Math.floor(flight.flight_hours);
@@ -599,6 +600,7 @@
             flight_date: document.getElementById('inp-date').value || null, 
             origin_code: originInput, dest_code: destInput,
             airline: document.getElementById('inp-airline').value || null,
+            flight_number: document.getElementById('inp-flight-number').value || null,
             seat: document.getElementById('inp-seat').value.toUpperCase() || null,
             seat_class: document.getElementById('inp-seat-class').value || null,
             seat_type: document.getElementById('inp-seat-type').value || null,
