@@ -489,8 +489,7 @@
                 let lHour = parseInt(f.landing_time.split(':')[0]);
                 if(!isNaN(lHour) && lHour >= 0 && lHour < 24) stats.landingStats[lHour]++;
             }
-            }
-
+            
             if(!stats.airportFlightsInfo[f.origin_code]) stats.airportFlightsInfo[f.origin_code] = [];
             if(!stats.airportFlightsInfo[f.dest_code]) stats.airportFlightsInfo[f.dest_code] = [];
             const flightInfoStr = `${f.flight_date||'Unknown'} ${f.airline||''}${f.flight_number||''} ${f.origin_code}✈️${f.dest_code}`;
