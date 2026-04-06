@@ -357,6 +357,17 @@
         return `https://images.kiwi.com/airlines/64/${iataCode.toUpperCase()}.png`;
     }
 
+    // 🚨 顏色引擎：依頻率給顏色 (4次為白色)
+    function getRouteColor(count) {
+        if(count === 1) return '#facc15';
+        if(count === 2) return '#3b82f6';
+        if(count === 3) return '#22c55e';
+        if(count === 4) return '#ffffff'; 
+        if(count === 5) return '#ef4444';
+        if(count === 6) return '#f97316';
+        return '#ffffff';
+    }
+
     async function loadGlobalAirports() {
         try {
             const response = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
@@ -402,7 +413,6 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
     
-    // 🚨 強化星空效果 (star-intensity: 0.8)
     map.on('style.load', () => map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 }));
 
     function filterByYear(year) {
@@ -413,7 +423,7 @@
         renderMapAndData();
     }
 
-    // 🎥 運鏡與加粗引擎
+    // 🎥 點擊單一航班的專屬運鏡引擎
     window.focusFlightRoute = function(routeId, origin, dest) {
         if (map.getStyle()) {
             map.getStyle().layers.forEach(l => { 
@@ -424,7 +434,7 @@
         }
         
         if (map.getLayer(`${routeId}-line`)) {
-            map.setPaintProperty(`${routeId}-line`, 'line-width', 6); // 點擊時加粗
+            map.setPaintProperty(`${routeId}-line`, 'line-width', 8); 
         }
 
         const o = airportDB[origin], d = airportDB[dest];
@@ -450,7 +460,7 @@
         let domCount = 0, intCount = 0, longCount = 0;
         let shortest = { route: '', dist: Infinity }, longest = { route: '', dist: -Infinity };
         let freq = { airports: {}, airlines: {}, routes: {}, countries: {}, aircrafts: {} };
-        let routeFreq = {};
+        let routeFreq = {}; // 🔥 計算頻率的字典
         
         let seatStats = { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 };
         let yearlyDist = {}; let monthlyCount = new Array(12).fill(0);
@@ -461,7 +471,7 @@
             return f.flight_date.startsWith(currentYearFilter);
         });
 
-        // 預先計算頻率，移除 Status 判斷 (所有航班都算)
+        // 預先計算頻率
         filteredFlights.forEach(f => {
             let r = [f.origin_code, f.dest_code].sort().join('-');
             routeFreq[r] = (routeFreq[r] || 0) + 1;
@@ -480,12 +490,16 @@
                 const dist = f.distance;
                 
                 const routeName = `${f.origin_code} ✈️ ${f.dest_code}`;              
+                const routeKey = [f.origin_code, f.dest_code].sort().join('-');
+                const freqCount = routeFreq[routeKey] || 1; // 抓取這條線飛過的次數
+                
+                // 為了相容 getRouteColor 的 status 判斷
+                const routeColor = (f.status && f.status.includes('計畫')) ? '#6b7280' : getRouteColor(freqCount);
                 
                 const logoUrl = getAirlineLogoUrl(f.airline); 
                 const airlineDisplay = f.airline ? (logoUrl ? `<img src="${logoUrl}" alt="${f.airline}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
                 const dateBadge = f.flight_date ? `<span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date.substring(0,4)}</span>` : '';
 
-                // UI 中拿掉 status 的顯示，點擊觸發 focusFlightRoute
                 document.getElementById('flight-list').innerHTML += `
                     <div class="bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 group cursor-pointer hover:bg-white/10 transition-colors" onclick="focusFlightRoute('r-${i}', '${f.origin_code}', '${f.dest_code}')">
                         ${airlineDisplay} 
@@ -494,6 +508,7 @@
                                 <span class="font-bold tracking-wider truncate">${routeName}</span>
                                 <div class="flex items-center gap-1 shrink-0 ml-2">
                                     ${dateBadge}
+                                    <span class="text-[10px] font-bold border border-current px-2 py-0.5 rounded-full" style="color: ${routeColor}">${f.status||'已完成'}</span>
                                     <button onclick="event.stopPropagation(); editFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">✏️</button>
                                     <button onclick="event.stopPropagation(); deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
                                 </div>
@@ -504,9 +519,10 @@
 
                 let rank = timelineFlights.indexOf(f);
                 let takeoffDelay = rank * 2000;
-                drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, takeoffDelay);
+                
+                // 🚨 傳入 3D 繪圖引擎
+                drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
-                // 移除 status 判斷，統統算進統計裡
                 totalKm += dist;
                 if(f.flight_hours) totalHours += parseFloat(f.flight_hours);
                 if(f.seat_class) { seatStats.class[f.seat_class] = (seatStats.class[f.seat_class] || 0) + 1; seatStats.validClasses++; }
@@ -588,7 +604,7 @@
             }
             if(total > 0) {
                 document.getElementById(chartId).style.background = `conic-gradient(${gradient.join(', ')})`;
-                document.getElementById(topNameId).innerText = (chartDict[topName] || topName).split(' ')[0]; // 只拿中文部分放中間
+                document.getElementById(topNameId).innerText = (chartDict[topName] || topName).split(' ')[0]; 
                 document.getElementById(legendId).innerHTML = legendHTML;
             }
         };
@@ -684,7 +700,6 @@
 
         renderMapAndData(); 
 
-        // 📱 手機版初始化自動折疊
         if (window.innerWidth < 768) {
             const content = document.getElementById('dash-content');
             const icon = document.getElementById('dash-toggle-icon');
@@ -763,13 +778,14 @@
         else { location.reload(); }
     }
 
-    // 🚀 升級版：3D 高度引擎 + 賽博龐克漸層動畫
-    function drawAnimatedRoute(origin, destination, routeId, delay = 0) {
+    // 🚀 升級版：3D 高度立體航線與原版顏色引擎
+    function drawAnimatedRoute(origin, destination, routeId, freqCount, status, delay = 0) {
+        let lineColor = (status && status.includes('計畫')) ? '#6b7280' : getRouteColor(freqCount);
+        
         const route = turf.greatCircle(origin, destination);
         const lineDistance = turf.length(route);
         const arcCoordinates = [];
         
-        // 3D 高度物理計算
         const maxHeight = Math.min(lineDistance * 200, 2000000); 
 
         for (let i = 0; i <= lineDistance; i += lineDistance / 250) {
@@ -780,10 +796,8 @@
         }
         arcCoordinates.push([destination[0], destination[1], 0]); 
 
-        // 🚨 加上 lineMetrics: true 才能支援 line-gradient
         map.addSource(routeId, { 
             'type': 'geojson', 
-            'lineMetrics': true,
             'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [arcCoordinates[0], arcCoordinates[0]] } } 
         });
         
@@ -793,17 +807,9 @@
             'source': routeId, 
             'layout': { 'line-join': 'round', 'line-cap': 'round' }, 
             'paint': { 
+                'line-color': lineColor, 
                 'line-width': 3, 
-                'line-opacity': 0.85,
-                // 🔥 賽博龐克藍黃漸層
-                'line-gradient': [
-                    'interpolate',
-                    ['linear'],
-                    ['line-progress'],
-                    0, '#60a5fa', 
-                    0.5, '#facc15',
-                    1, '#60a5fa'
-                ]
+                'line-opacity': 0.85 
             } 
         });
 
@@ -827,8 +833,8 @@
                 const p1 = arcCoordinates[animCounter - 1];
                 const p2 = arcCoordinates[animCounter];
                 const bearing = turf.bearing(p1, p2);
-                planeMarker.setLngLat(p2);
                 
+                planeMarker.setLngLat(p2);
                 planeIcon.style.transform = `rotate(${bearing - 45}deg)`; 
 
                 animCounter++;
