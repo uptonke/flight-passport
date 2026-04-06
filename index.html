@@ -52,7 +52,7 @@
 
 <div id="main-dashboard" class="absolute bottom-4 right-4 left-4 md:left-auto md:right-8 md:bottom-8 glass-panel p-5 md:p-6 rounded-3xl z-10 md:w-80 shadow-2xl flex flex-col max-h-[65vh] md:max-h-[85vh] transition-all duration-500">
     <div class="flex justify-between items-center border-b border-white/10 pb-3 md:pb-4 shrink-0 cursor-pointer md:cursor-default" onclick="toggleDashboard()">
-        <div><div class="text-base md:text-lg font-black tracking-widest">FLIGHT DASHBOARD</div></div>
+        <div><div class="text-base md:text-lg font-black tracking-widest">FLIGHT DASHBOARD 飛行紀錄</div></div>
         <div class="flex items-center gap-3">
             <div id="dash-toggle-icon" class="md:hidden text-gray-400 bg-white/10 rounded-full w-8 h-8 flex items-center justify-center text-xs transition-transform">🔽</div>
         </div>
@@ -79,7 +79,7 @@
         </div>
 
         <button onclick="toggleModal('passportModal')" class="w-full bg-[#5e35b1] hover:bg-[#673ab7] text-white font-bold py-3 rounded-xl mb-4 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-[0_0_15px_rgba(94,53,177,0.5)]">
-            打開護照 Open Passport
+            打開 Open
         </button>
 
         <div class="flex items-center justify-between mb-2 shrink-0">
@@ -96,7 +96,7 @@
         <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-[#2a1b54] to-transparent opacity-50 pointer-events-none"></div>
 
         <div class="relative z-10 flex justify-between items-center mb-10">
-            <h2 class="text-3xl font-black tracking-tighter">我的飛行護照 My Passport</h2>
+            <h2 class="text-3xl font-black tracking-tighter">我的飛行紀錄 My flight logs</h2>
             <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">&times;</button>
         </div>
 
@@ -680,7 +680,7 @@
         const renderList = (dataObj, containerId, colorClass, listType = 'normal') => {
             const sorted = Object.entries(dataObj).sort((a,b) => b[1]-a[1]);
             const container = document.getElementById(containerId);
-            if(!container) return;
+            if(!container) return 0;
             
             const maxVal = sorted.length ? sorted[0][1] : 1;
             
@@ -703,12 +703,22 @@
                         </div>
                     </div>`;
             }).join('');
+            
+            return sorted.length; // 🚨 補回這行：回傳陣列總數量
         };
 
-        renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600', 'normal');
-        renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]', 'normal');
-        renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]', 'airport');
-        renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', 'airline');
+        // 🚨 補回賦值：將回傳的總數寫入對應的 HTML 標題中
+        const elAircraft = document.getElementById('pp-total-aircraft');
+        if (elAircraft) elAircraft.innerText = renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600', 'normal');
+
+        const elRoutes = document.getElementById('pp-total-routes');
+        if (elRoutes) elRoutes.innerText = renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]', 'normal');
+
+        const elAirports = document.getElementById('pp-total-airports');
+        if (elAirports) elAirports.innerText = renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]', 'airport');
+
+        const elAirlines = document.getElementById('pp-total-airlines');
+        if (elAirlines) elAirlines.innerText = renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', 'airline');
 
         if(window.myYearlyChart) window.myYearlyChart.destroy();
         if(window.myMonthlyChart) window.myMonthlyChart.destroy();
