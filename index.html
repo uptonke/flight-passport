@@ -43,30 +43,46 @@
     </button>
 </div>
 
-<div class="absolute bottom-8 right-8 glass-panel p-6 rounded-3xl z-10 w-80 shadow-2xl flex flex-col max-h-[85vh]">
-    <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4 shrink-0">
-        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Passenger</div><div class="text-lg font-bold">KE WEIXU</div></div>
-        <div class="text-right"><div class="text-[10px] text-gray-400 uppercase font-bold">Status</div><div class="text-sm font-bold text-sky-400">EXPLORER</div></div>
+<div id="main-dashboard" class="absolute bottom-4 right-4 left-4 md:left-auto md:right-8 md:bottom-8 glass-panel p-5 md:p-6 rounded-3xl z-10 md:w-80 shadow-2xl flex flex-col max-h-[65vh] md:max-h-[85vh] transition-all duration-500">
+    <div class="flex justify-between items-center border-b border-white/10 pb-3 md:pb-4 shrink-0 cursor-pointer md:cursor-default" onclick="toggleDashboard()">
+        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Passenger</div><div class="text-base md:text-lg font-bold">KE WEIXU</div></div>
+        <div class="flex items-center gap-3">
+            <div class="text-right"><div class="text-[10px] text-gray-400 uppercase font-bold">Status</div><div class="text-sm font-bold text-sky-400">EXPLORER</div></div>
+            <div id="dash-toggle-icon" class="md:hidden text-gray-400 bg-white/10 rounded-full w-8 h-8 flex items-center justify-center text-xs transition-transform">🔽</div>
+        </div>
     </div>
     
-    <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
-        <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div class="text-[10px] text-gray-400 uppercase">總飛行距離</div>
-            <div class="text-xl font-bold"><span id="stat-dist">0</span> <span class="text-xs text-gray-500">km</span></div>
+    <div id="dash-content" class="flex flex-col flex-1 overflow-hidden transition-all duration-500 mt-4 opacity-100">
+        <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                <div class="text-[10px] text-gray-400 uppercase">總飛行距離</div>
+                <div class="text-xl font-bold"><span id="stat-dist">0</span> <span class="text-xs text-gray-500">km</span></div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                <div class="text-[10px] text-gray-400 uppercase">總航班數</div>
+                <div class="text-xl font-bold"><span id="stat-flights">0</span></div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                <div class="text-[10px] text-gray-400 uppercase">最長航線</div>
+                <div class="text-sm font-bold truncate text-[#facc15]" id="sb-long-route">--</div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                <div class="text-[10px] text-gray-400 uppercase">最短航線</div>
+                <div class="text-sm font-bold truncate text-sky-400" id="sb-short-route">--</div>
+            </div>
         </div>
-        <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div class="text-[10px] text-gray-400 uppercase">總航班數</div>
-            <div class="text-xl font-bold"><span id="stat-flights">0</span></div>
+
+        <button onclick="toggleModal('passportModal')" class="w-full bg-[#5e35b1] hover:bg-[#673ab7] text-white font-bold py-3 rounded-xl mb-4 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-[0_0_15px_rgba(94,53,177,0.5)]">
+            打開 Flighty Passport
+        </button>
+
+        <div class="flex items-center justify-between mb-2 shrink-0">
+            <div class="text-xs text-gray-400 uppercase font-bold">近期日誌</div>
         </div>
-        <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div class="text-[10px] text-gray-400 uppercase">最長航線</div>
-            <div class="text-sm font-bold truncate text-[#facc15]" id="sb-long-route">--</div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div class="text-[10px] text-gray-400 uppercase">最短航線</div>
-            <div class="text-sm font-bold truncate text-sky-400" id="sb-short-route">--</div>
-        </div>
+        <div class="flex gap-2 overflow-x-auto pb-2 mb-2 shrink-0 text-xs font-bold" id="year-filters"></div>
+        <div id="flight-list" class="overflow-y-auto space-y-2 pr-1 flex-1 pb-2"></div>
     </div>
+</div>
 
     <button onclick="toggleModal('passportModal')" class="w-full bg-[#5e35b1] hover:bg-[#673ab7] text-white font-bold py-3 rounded-xl mb-4 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-[0_0_15px_rgba(94,53,177,0.5)]">
         打開 Flighty Passport
@@ -805,6 +821,24 @@
         
         // 套用我們傳進來的時間軸
         setTimeout(() => animate(), delay + 1300); 
+    }
+    // 📱 手機版 Dashboard 折疊控制引擎
+    function toggleDashboard() {
+        // 如果螢幕寬度大於 768px (電腦版)，直接 Return 禁用折疊功能
+        if (window.innerWidth >= 768) return; 
+        
+        const content = document.getElementById('dash-content');
+        const icon = document.getElementById('dash-toggle-icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            setTimeout(() => content.classList.remove('opacity-0', 'h-0', 'mt-0'), 10);
+            icon.style.transform = 'rotate(0deg)';
+        } else {
+            content.classList.add('opacity-0', 'h-0', 'mt-0');
+            icon.style.transform = 'rotate(180deg)';
+            setTimeout(() => content.classList.add('hidden'), 500); // 等動畫跑完再隱藏
+        }
     }
 </script>
 </body>
