@@ -390,36 +390,83 @@
 
     // 🔥 加入中文名稱與 datalist 支援
    // 🔥 加入中文名稱與 datalist 支援 (包含修正地圖標點的「強制覆寫引擎」)
+   // 🔥 加入中文名稱與 datalist 支援 (升級版：智慧合併中英雙語與髒資料修正)
     async function loadGlobalAirports() {
         try {
             const response = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
             const data = await response.json();
             let options = '';
             
-            // 🚨 Data Override (Dirty Data 修正區)
-            // 格式：'IATA代碼': { coords: [經度 Lon, 緯度 Lat], name: '機場名', city: '城市', country: '國家' }
-            // 未來如果還有其他機場畫錯或找不到，直接用 Google Maps 查出經緯度加在這裡！
+            // 🚨 機場中英雙語擴充 & 髒資料修正區
+            // 只要把你想改中文的機場寫在這裡，它會自動覆蓋原始英文資料！
             const manualOverrides = {
-                'SZX': { coords: [113.8115, 22.6393], name: 'Shenzhen Bao\'an', city: 'Shenzhen', country: 'China' },
-                'LJG': { coords: [100.2464, 26.6714], name: 'Lijiang Sanyi', city: 'Lijiang', country: 'China' }
+                // 台灣
+                'TPE': { city: '桃園 Taipei' },
+                'TSA': { city: '松山 Taipei' },                
+                // 日本
+                'HND': { city: '東京羽田 Tokyo' },
+                'NRT': { city: '東京成田 Tokyo' },
+                'KIX': { city: '大阪 Osaka' },
+                'OKA': { city: '沖繩 Okinawa' },
+                'CTS': { city: '札幌 Sapporo' },
+                'KMJ': { city: '熊本 Kumamoto' },
+                'FUK': { city: '福岡 Fukuoka' },
+                // 中國
+                'PEK': { city: '北京首都 Beijing' },
+                'PVG': { city: '上海浦東 Shanghai' },
+                'SHA': { city: '上海虹橋 Shanghai' },
+                'HGH': { city: '杭州 Hangzhou' },
+                'TFU': { city: '成都天府 Chengdu' },
+                'XIY': { city: '西安 Xi'an' },
+                'SZX': { coords: [113.8115, 22.6393], city: '深圳 Shenzhen' }, // 帶座標修正
+                'LJG': { coords: [100.2464, 26.6714], city: '麗江 Lijiang' },   // 帶座標修正
+                // 東南亞與港澳韓
+                'SIN': { city: '新加坡 Singapore' },
+                'HKT': { city: '普吉島 Phuket' },
+                'PEN': { city: '檳城 Penang' },
+                'BKK': { city: '曼谷 Bangkok' },
+                'DMK': { city: '曼谷廊曼 Bangkok' },
+                'KUL': { city: '吉隆坡 Kuala Lumpur' },
+                'CGK': { city: '雅加達 Jakarta' },
+                'MNL': { city: '馬尼拉 Manila' },
+                'HKG': { city: '香港 Hong Kong' },
+                'MFM': { city: '澳門 Macau' },
+                'ICN': { city: '首爾 Seoul' },
+                'GMP': { city: '首爾 Seoul' }
+                // 歐洲與中東
+                'LGW': { city: '倫敦 London' },
+                'FCO': { city: '羅馬 Rome' },
+                'BCN': { city: '巴塞羅那 Barcelona' },
+                'IST': { city: '伊斯坦堡 Istanbul' },
+                'CAI': { city: '開羅 Cairo' },
+                'DXB': { city: '杜拜 Dubai' },
+                'ABU': { city: '阿布達比 Abu Dhabi' },
+                'DOH': { city: '杜哈 Doha' }
+                // 美洲與南亞
+                'JFK': { city: '紐約 New York' },
+                'LAX': { city: '洛杉磯 Los Angeles' },
+                'LAS': { city: '拉斯維加斯 Las Vegas' },
+                'IAD': { city: '華盛頓 Washington' },
+                'SFO': { city: '舊金山 San Francisco' },
+                'DEL': { city: '新德里 New Delhi' },
+                'CMB': { city: '科倫坡 Colombo' },              
             };
 
             data.forEach(a => { 
                 if (a.code) {
                     let code = a.code.toUpperCase();
-                    // 把 API 的資料寫進去 (前提是我們沒有要手動覆寫它)
-                    if (!manualOverrides[code]) {
-                        airportDB[code] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
-                        options += `<option value="${code}">${a.name} (${a.city})</option>`;
+                    // 基礎英文資料
+                    let airportInfo = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
+                    
+                    // 智慧合併：如果 manualOverrides 裡有這個機場，就用我們的中文資料蓋掉原本的英文
+                    if (manualOverrides[code]) {
+                        airportInfo = { ...airportInfo, ...manualOverrides[code] };
                     }
+                    
+                    airportDB[code] = airportInfo;
+                    options += `<option value="${code}">${airportInfo.name} (${airportInfo.city})</option>`;
                 }
             });
-
-            // 把我們手動校正的「乾淨資料」強制蓋進本地資料庫裡
-            for (let [code, info] of Object.entries(manualOverrides)) {
-                airportDB[code] = info;
-                options += `<option value="${code}">${info.name} (${info.city})</option>`;
-            }
 
             document.getElementById('iata-list').innerHTML = options;
         } catch (e) { console.error('字典載入失敗', e); }
