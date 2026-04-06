@@ -606,6 +606,7 @@
     // ==========================================
     // 4️⃣ Map Layer (地圖與單一渲染引擎)
     // ==========================================
+   mapboxgl.accessToken = MAPBOX_TOKEN; // 🚨 補回這行：把環境變數的 Token 餵給 Mapbox 引擎
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
     map.on('style.load', () => map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 }));
 
