@@ -821,10 +821,16 @@
                 animCounter++;
                 requestAnimationFrame(animate);
             } else {
-                planeMarker.remove(); 
+                // 🔥 終極 Loop 引擎：抵達終點後不刪除，重置計數器回到起點
+                animCounter = 1;
+                
+                // 讓飛機在目的地停泊 2 秒鐘 (2000 毫秒) 後，再次起飛形成無限輪迴
+                // 你可以依照 Vibe 自行調整 2000 這個數字
+                setTimeout(() => {
+                    requestAnimationFrame(animate);
+                }, 2000);
             }
         }
-       // 🔥 替換成這行 (套用我們傳進來的時間軸)
         setTimeout(() => animate(), delay + 500); 
     }
 </script>
