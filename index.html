@@ -217,7 +217,7 @@
             <div>
                 <div class="flex items-baseline gap-2 mb-4">
                     <div class="text-3xl font-black" id="pp-total-airlines">0</div>
-                    <div class="text-gray-400 font-bold">航司 Top Airlines</div>
+                    <div class="text-gray-400 font-bold">航空公司 Top Airlines</div>
                 </div>
                 <div id="list-airlines" class="space-y-3"></div>
             </div>
@@ -249,7 +249,7 @@
                 <div><label class="block text-xs text-gray-400 mb-1">目的地 Dest</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
             </div>
             <div class="grid grid-cols-3 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">航司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="BR"></div>
+                <div><label class="block text-xs text-gray-400 mb-1"> 航空公司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="BR"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">航班號 Flight No.</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="87"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">座位 Seat</label><input type="text" id="inp-seat" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase"></div>
             </div>
@@ -355,6 +355,15 @@
     function getAirlineLogoUrl(iataCode) {
         if (!iataCode || iataCode.length !== 2) return null; 
         return `https://images.kiwi.com/airlines/64/${iataCode.toUpperCase()}.png`;
+    }
+      function getRouteColor(count) {
+        if(count === 1) return '#facc15';
+        if(count === 2) return '#3b82f6';
+        if(count === 3) return '#22c55e';
+        if(count === 4) return '#ffffff'; // 原本是 #000000
+        if(count === 5) return '#ef4444';
+        if(count === 6) return '#f97316';
+        return '#ffffff';
     }
 
     async function loadGlobalAirports() {
@@ -496,8 +505,8 @@
                     </div>`;
 
                 let rank = timelineFlights.indexOf(f);
-                let takeoffDelay = rank * 2000; 
-                drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, takeoffDelay);
+                let takeoffDelay = rank * 2000;
+                drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
                 // 移除 status 判斷，統統算進統計裡
                 totalKm += dist;
@@ -756,18 +765,32 @@
         else { location.reload(); }
     }
 
-    // 🚀 退回原版：加入 line-gradient 漸層動畫
-    function drawAnimatedRoute(origin, destination, routeId, delay = 0) {
+   // 🚀 升級版：3D 高度立體航線與原版顏色引擎
+    function drawAnimatedRoute(origin, destination, routeId, freqCount, status, delay = 0) {
+        // 吃回你的顏色邏輯
+        let lineColor = (status && status.includes('計畫')) ? '#6b7280' : getRouteColor(freqCount);
+        
         const route = turf.greatCircle(origin, destination);
         const lineDistance = turf.length(route);
         const arcCoordinates = [];
-        for (let i = 0; i <= lineDistance; i += lineDistance / 250) arcCoordinates.push(turf.along(route, i).geometry.coordinates);
-        arcCoordinates.push(destination); 
+        
+        // 🔥 3D 高度引擎 (Altitude Math)
+        // 依照航線總長度動態決定最高點，讓長程線飛得高、短程線飛得低
+        const maxHeight = Math.min(lineDistance * 200, 2000000); // 單位：公尺 (最大不超過 2000km 的視覺高度)
 
-        // 🚨 加上 lineMetrics: true 才能使用漸層
+        for (let i = 0; i <= lineDistance; i += lineDistance / 250) {
+            let pt = turf.along(route, i).geometry.coordinates;
+            // 利用 Sin 波形計算拋物線高度：起點/終點為 0，中間最高
+            let progress = i / lineDistance;
+            let h = Math.sin(progress * Math.PI) * maxHeight;
+            
+            // 塞入 Z 軸座標 [經度, 緯度, 高度]
+            arcCoordinates.push([pt[0], pt[1], h]); 
+        }
+        arcCoordinates.push([destination[0], destination[1], 0]); 
+
         map.addSource(routeId, { 
             'type': 'geojson', 
-            'lineMetrics': true,
             'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [arcCoordinates[0], arcCoordinates[0]] } } 
         });
         
@@ -777,17 +800,9 @@
             'source': routeId, 
             'layout': { 'line-join': 'round', 'line-cap': 'round' }, 
             'paint': { 
+                'line-color': lineColor, 
                 'line-width': 3, 
-                'line-opacity': 0.85,
-                // 🌟 新增的賽博龐克藍黃漸層
-                'line-gradient': [
-                    'interpolate',
-                    ['linear'],
-                    ['line-progress'],
-                    0, '#60a5fa', 
-                    0.5, '#facc15',
-                    1, '#60a5fa'
-                ]
+                'line-opacity': 0.85 
             } 
         });
 
@@ -811,8 +826,11 @@
                 const p1 = arcCoordinates[animCounter - 1];
                 const p2 = arcCoordinates[animCounter];
                 const bearing = turf.bearing(p1, p2);
-                planeMarker.setLngLat(p2);
                 
+                // 💡 視覺巧思：HTML DOM Marker 無法支援 Z 軸懸空。
+                // 所以 3D 航線會在空中畫拱門，而這架 Emoji 飛機會在「地球表面」跟著跑！
+                // 視覺上看起來就像是飛機在地球表面的「立體投影影子」，Vibe 極佳。
+                planeMarker.setLngLat(p2);
                 planeIcon.style.transform = `rotate(${bearing - 45}deg)`; 
 
                 animCounter++;
@@ -823,23 +841,6 @@
         }
         
         setTimeout(() => animate(), delay + 1300); 
-    }
-
-    function toggleDashboard() {
-        if (window.innerWidth >= 768) return; 
-        
-        const content = document.getElementById('dash-content');
-        const icon = document.getElementById('dash-toggle-icon');
-        
-        if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden');
-            setTimeout(() => content.classList.remove('opacity-0', 'h-0', 'mt-0'), 10);
-            icon.style.transform = 'rotate(0deg)';
-        } else {
-            content.classList.add('opacity-0', 'h-0', 'mt-0');
-            icon.style.transform = 'rotate(180deg)';
-            setTimeout(() => content.classList.add('hidden'), 500); 
-        }
     }
 </script>
 </body>
