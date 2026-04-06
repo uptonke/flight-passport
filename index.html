@@ -463,7 +463,9 @@
                         </div>
                     </div>`;
 
-                drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status);
+                // 🔥 新增：計算起飛時間差 (最舊的航班 delay=0，越新的越晚起飛，每架間隔 800 毫秒)
+                let takeoffDelay = (filteredFlights.length - 1 - i) * 800; 
+                drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
                 if(f.status && f.status.includes('完成')) {
                     totalKm += dist;
@@ -767,7 +769,8 @@
         }
     }
 
-    function drawAnimatedRoute(origin, destination, routeId, freqCount, status) {
+    // 🔥 替換成這行 (新增 delay 參數)
+    function drawAnimatedRoute(origin, destination, routeId, freqCount, status, delay = 0) {
         let lineColor = (status && status.includes('計畫')) ? '#6b7280' : getRouteColor(freqCount);
         const route = turf.greatCircle(origin, destination);
         const lineDistance = turf.length(route);
@@ -811,7 +814,8 @@
                 planeMarker.remove(); 
             }
         }
-        setTimeout(() => animate(), Math.random() * 1000 + 500); 
+       // 🔥 替換成這行 (套用我們傳進來的時間軸)
+        setTimeout(() => animate(), delay + 500); 
     }
 </script>
 </body>
