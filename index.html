@@ -9,6 +9,7 @@
     <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -21,9 +22,14 @@
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
         
         .bar-fill { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* 讓 Popup 的設計符合暗黑 Vibe */
+        .mapboxgl-popup-content { background: rgba(30, 30, 34, 0.95); backdrop-filter: blur(10px); color: white; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); padding: 12px; }
+        .mapboxgl-popup-tip { border-top-color: rgba(30, 30, 34, 0.95) !important; }
     </style>
 </head>
 <body class="font-sans antialiased text-white select-none">
+<datalist id="iata-list"></datalist>
 
 <div id="map"></div>
 
@@ -123,7 +129,7 @@
                         <div class="text-[10px] text-gray-400 uppercase">Avg Flight</div>
                         <div class="text-xl font-bold leading-none mt-1" id="pp-avg-time">0h</div>
                     </div>
-                    <div class="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-center">
+                    <div class="bg-white/5 p-3 rounded-xl border border-[#5e35b1]/30 flex flex-col justify-center">
                         <div class="text-[10px] text-gray-400 uppercase">In Air</div>
                         <div class="text-xl font-bold leading-none mt-1" id="pp-in-air">0h</div>
                     </div>
@@ -139,6 +145,17 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="relative z-10 grid grid-cols-2 gap-6 mb-12">
+            <div class="bg-white/5 p-5 rounded-3xl">
+                <div class="text-xs text-gray-400 uppercase font-bold mb-3">Yearly Distance Trend</div>
+                <canvas id="chart-yearly" class="w-full h-32"></canvas>
+            </div>
+            <div class="bg-white/5 p-5 rounded-3xl">
+                <div class="text-xs text-gray-400 uppercase font-bold mb-3">Monthly Flights Heat</div>
+                <canvas id="chart-monthly" class="w-full h-32"></canvas>
             </div>
         </div>
 
@@ -192,13 +209,6 @@
             </div>
             <div>
                 <div class="flex items-baseline gap-2 mb-4">
-                    <div class="text-3xl font-black" id="pp-total-routes">0</div>
-                    <div class="text-gray-400 font-bold">Top Routes</div>
-                </div>
-                <div id="list-routes" class="space-y-3"></div>
-            </div>
-            <div>
-                <div class="flex items-baseline gap-2 mb-4">
                     <div class="text-3xl font-black" id="pp-total-airports">0</div>
                     <div class="text-gray-400 font-bold">Total Airports</div>
                 </div>
@@ -210,6 +220,13 @@
                     <div class="text-gray-400 font-bold">Total Airlines</div>
                 </div>
                 <div id="list-airlines" class="space-y-3"></div>
+            </div>
+            <div>
+                <div class="flex items-baseline gap-2 mb-4">
+                    <div class="text-3xl font-black" id="pp-total-routes">0</div>
+                    <div class="text-gray-400 font-bold">Total Airports (Routes)</div>
+                </div>
+                <div id="list-routes" class="space-y-3"></div>
             </div>
         </div>
 
@@ -228,8 +245,8 @@
                 <input type="date" id="inp-date" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">出發地(IATA)</label><input type="text" id="inp-origin" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">目的地(IATA)</label><input type="text" id="inp-dest" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">出發地(IATA)</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">目的地(IATA)</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
             </div>
             <div class="grid grid-cols-3 gap-4">
                 <div><label class="block text-xs text-gray-400 mb-1">航空公司</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="BR"></div>
@@ -290,6 +307,25 @@
     let editingFlightId = null;
     let currentYearFilter = 'ALL';
 
+    // 🔥 航班號自動拆解引擎 (輸入 BR87 自動拆成 BR 與 87)
+   // 🔥 升級版：智慧航班號拆解引擎 (支援雙向輸入防呆)
+    function smartSplitFlight(e) {
+        let val = e.target.value.toUpperCase().replace(/\s/g, '');
+        
+        // 防呆：如果是純數字 (如 87 或 1234)，代表純粹是航班號，絕對不執行拆解
+        if (/^[0-9]{1,4}[A-Z]?$/.test(val)) return;
+
+        let match = val.match(/^([A-Z0-9]{2,3})([0-9]{1,4}[A-Z]?)$/);
+        if (match) {
+            document.getElementById('inp-airline').value = match[1];
+            document.getElementById('inp-flight-number').value = match[2];
+        }
+    }
+    
+    // 綁定到兩個輸入框，讓你在哪填都能自動分家
+    document.getElementById('inp-airline').addEventListener('change', smartSplitFlight);
+    document.getElementById('inp-flight-number').addEventListener('change', smartSplitFlight);
+
     function formatTimeString(decimalHrs) {
         if(!decimalHrs) return '0h 0m';
         const h = Math.floor(decimalHrs);
@@ -312,11 +348,19 @@
         return '#ffffff';
     }
 
+    // 🔥 加入中文名稱與 datalist 支援
     async function loadGlobalAirports() {
         try {
             const response = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
             const data = await response.json();
-            data.forEach(a => { if (a.code) airportDB[a.code.toUpperCase()] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], country: a.country }; });
+            let options = '';
+            data.forEach(a => { 
+                if (a.code) {
+                    airportDB[a.code.toUpperCase()] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
+                    options += `<option value="${a.code.toUpperCase()}">${a.name} (${a.city})</option>`;
+                }
+            });
+            document.getElementById('iata-list').innerHTML = options;
         } catch (e) { console.error('字典載入失敗', e); }
     }
 
@@ -340,7 +384,6 @@
             Object.keys(map.getStyle().sources).forEach(s => { if (s.startsWith('r-')) map.removeSource(s); });
         }
 
-        // 🔥 將統計變數在函數內宣告，確保切換年份時歸零
         let totalKm = 0, totalHours = 0, completedFlights = 0;
         let domCount = 0, intCount = 0, longCount = 0;
         let shortest = { route: '', dist: Infinity }, longest = { route: '', dist: -Infinity };
@@ -352,6 +395,10 @@
             type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 },
             exitRows: 0, validClasses: 0, validTypes: 0
         };
+
+        // 🔥 圖表數據收集陣列
+        let yearlyDist = {};
+        let monthlyCount = new Array(12).fill(0);
 
         let filteredFlights = currentFlights.filter(f => {
             if(currentYearFilter === 'ALL') return true;
@@ -391,7 +438,7 @@
                                     <button onclick="deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
                                 </div>
                             </div>
-                            <div class="text-[10px] text-gray-400 truncate">${f.airline||''}${f.flight_number||''} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
+                            <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
                         </div>
                     </div>`;
 
@@ -405,8 +452,15 @@
                     if(f.seat_type) { seatStats.type[f.seat_type] = (seatStats.type[f.seat_type] || 0) + 1; seatStats.validTypes++; }
                     if(f.is_exit_row) { seatStats.exitRows++; }
                     
+                    // 🔥 收集趨勢圖數據
+                    if(f.flight_date) {
+                        const y = f.flight_date.substring(0,4);
+                        const m = parseInt(f.flight_date.substring(5,7)) - 1;
+                        yearlyDist[y] = (yearlyDist[y] || 0) + dist;
+                        monthlyCount[m]++;
+                    }
+                    
                     completedFlights++;
-                    // 🔥 精準計算國內外與長程航班
                     if(orig.country && dest.country && orig.country === dest.country) domCount++; else intCount++;
                     if(dist >= 4000) longCount++;
 
@@ -453,7 +507,6 @@
         document.getElementById('pp-avg-time').innerText = `${Math.floor(avgHours)}h ${Math.round((avgHours-Math.floor(avgHours))*60)}m`;
         document.getElementById('pp-in-air').innerText = `${Math.floor(totalHours)}h ${Math.round((totalHours-Math.floor(totalHours))*60)}m`;
 
-        // 🔥 將統計數據推送到 UI 上
         document.getElementById('pp-total-flights-box').innerText = completedFlights;
         document.getElementById('pp-dom').innerText = domCount;
         document.getElementById('pp-int').innerText = intCount;
@@ -513,6 +566,44 @@
         document.getElementById('pp-total-routes').innerText = renderList(freq.routes, 'list-routes', 'bg-[#5e35b1]');
         document.getElementById('pp-total-airports').innerText = renderList(freq.airports, 'list-airports', 'bg-[#7e57c2]');
         document.getElementById('pp-total-airlines').innerText = renderList(freq.airlines, 'list-airlines', 'bg-sky-600', true);
+
+        // 🔥 機場熱力點與點擊 Popup 引擎
+        let airportFeatures = [];
+        for (let [code, count] of Object.entries(freq.airports)) {
+            if (airportDB[code]) {
+                airportFeatures.push({ type: 'Feature', properties: { code: code, count: count, name: airportDB[code].name, city: airportDB[code].city }, geometry: { type: 'Point', coordinates: airportDB[code].coords } });
+            }
+        }
+        if(map.getSource('airports')) { map.getSource('airports').setData({ type: 'FeatureCollection', features: airportFeatures }); } 
+        else {
+            map.addSource('airports', { type: 'geojson', data: { type: 'FeatureCollection', features: airportFeatures } });
+            map.addLayer({ id: 'airports-glow', type: 'circle', source: 'airports', paint: { 'circle-radius': ['*', ['get', 'count'], 4], 'circle-color': '#facc15', 'circle-opacity': 0.4, 'circle-blur': 1 } });
+            map.addLayer({ id: 'airports-core', type: 'circle', source: 'airports', paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-width': 1, 'circle-stroke-color': '#000' } });
+            
+            map.on('click', 'airports-core', (e) => {
+                const props = e.features[0].properties;
+                new mapboxgl.Popup({ closeButton: false }).setLngLat(e.features[0].geometry.coordinates)
+                    .setHTML(`<div><strong class="text-lg">${props.code}</strong><div class="text-xs text-gray-400">${props.name}</div><div class="text-sm font-bold text-sky-400 mt-1">${props.city} · 造訪 ${props.count} 次</div></div>`).addTo(map);
+            });
+            map.on('mouseenter', 'airports-core', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'airports-core', () => map.getCanvas().style.cursor = '');
+        }
+
+        // 🔥 Chart.js 渲染引擎
+        if(window.myYearlyChart) window.myYearlyChart.destroy();
+        if(window.myMonthlyChart) window.myMonthlyChart.destroy();
+        
+        window.myYearlyChart = new Chart(document.getElementById('chart-yearly').getContext('2d'), {
+            type: 'line',
+            data: { labels: Object.keys(yearlyDist).sort(), datasets: [{ data: Object.keys(yearlyDist).sort().map(k => Math.round(yearlyDist[k])), borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', fill: true, tension: 0.4 }] },
+            options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { display: false } }, y: { display: false } } }
+        });
+
+        window.myMonthlyChart = new Chart(document.getElementById('chart-monthly').getContext('2d'), {
+            type: 'bar',
+            data: { labels: ['J','F','M','A','M','J','J','A','S','O','N','D'], datasets: [{ data: monthlyCount, backgroundColor: '#facc15', borderRadius: 4 }] },
+            options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { display: false } }, y: { display: false } } }
+        });
     }
 
     map.on('load', async () => {
@@ -538,7 +629,6 @@
         });
         document.getElementById('year-filters').innerHTML = filterHTML;
 
-        // 🔥 啟動 Google Earth 級別自轉 (只有初始載入時啟動一次)
         let spinEnabled = true;
         function spinGlobe() {
             const zoom = map.getZoom();
@@ -665,16 +755,39 @@
         arcCoordinates.push(destination); 
 
         map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [arcCoordinates[0], arcCoordinates[0]] } } });
-        map.addLayer({ 'id': `${routeId}-line`, 'type': 'line', 'source': routeId, 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': lineColor, 'line-width': 3, 'line-opacity': 0.8, 'line-blur': 1 } });
-        map.addLayer({ 'id': `${routeId}-points`, 'type': 'circle', 'source': routeId, 'paint': { 'circle-radius': 4, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': lineColor } });
+        map.addLayer({ 'id': `${routeId}-line`, 'type': 'line', 'source': routeId, 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': lineColor, 'line-width': 3, 'line-opacity': 0.5 } });
+
+      // 🔥 動態飛機 Marker (修正 Mapbox 衝突)
+        const elContainer = document.createElement('div');
+        const planeIcon = document.createElement('div');
+        planeIcon.innerHTML = '✈️';
+        planeIcon.style.fontSize = '18px';
+        planeIcon.style.transition = 'transform 0.1s linear'; // 讓旋轉更滑順
+        elContainer.appendChild(planeIcon);
+        
+        const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(arcCoordinates[0]).addTo(map);
 
         let animCounter = 1; 
         function animate() {
             if (animCounter < arcCoordinates.length) {
                 const currentCoords = arcCoordinates.slice(0, animCounter + 1);
-                map.getSource(routeId).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': currentCoords } }, { 'type': 'Feature', 'geometry': { 'type': 'Point', 'coordinates': currentCoords[currentCoords.length - 1] } }, { 'type': 'Feature', 'geometry': { 'type': 'Point', 'coordinates': arcCoordinates[0] } } ] });
+                if(map.getSource(routeId)) {
+                    map.getSource(routeId).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': currentCoords } } ] });
+                }
+                
+                // 計算旋轉角度
+                const p1 = arcCoordinates[animCounter - 1];
+                const p2 = arcCoordinates[animCounter];
+                const bearing = turf.bearing(p1, p2);
+                planeMarker.setLngLat(p2);
+                
+                // 🚨 關鍵修復：只旋轉內部的 planeIcon，不碰外層的 Mapbox 定位容器
+                planeIcon.style.transform = `rotate(${bearing - 45}deg)`; 
+
                 animCounter++;
                 requestAnimationFrame(animate);
+            } else {
+                planeMarker.remove(); 
             }
         }
         setTimeout(() => animate(), Math.random() * 1000 + 500); 
