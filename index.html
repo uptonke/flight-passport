@@ -125,10 +125,14 @@
             </div>
         </div>
 
-        <div class="relative z-10 bg-white/5 p-6 rounded-3xl mb-12 flex flex-col items-center">
-            <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">起飛時段偏好 Takeoff Preferences (24H)</div>
-            <div class="w-full max-w-[350px] aspect-square relative">
-                <canvas id="chart-takeoff"></canvas>
+        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center">
+                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">起飛時段 Takeoff (24H)</div>
+                <div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-takeoff"></canvas></div>
+            </div>
+            <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center">
+                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">降落時段 Landing (24H)</div>
+                <div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-landing"></canvas></div>
             </div>
         </div>
 
@@ -167,9 +171,10 @@
             <button onclick="toggleModal('addFlightModal')" class="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
         <form id="flightForm" class="space-y-4" onsubmit="submitFlight(event)">
-            <div class="grid grid-cols-2 gap-4 mb-2">
+            <div class="grid grid-cols-3 gap-4 mb-2">
                 <div><label class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">起飛時間 Takeoff Time</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">降落 Landing</label><input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div><label class="block text-xs text-gray-400 mb-1">出發地 Origin</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
@@ -362,7 +367,7 @@
     function exportCSV() {
         if(globalFlights.length === 0) return alert('無資料可匯出');
         // 🚀 加入 takeoff_time
-        const headers = ['flight_date', 'takeoff_time', 'origin_code', 'dest_code', 'airline', 'flight_number', 'seat', 'aircraft_type', 'flight_hours', 'seat_class', 'seat_type', 'is_exit_row'];
+        const headers = ['flight_date', 'takeoff_time', 'landing_time', 'origin_code', 'dest_code', 'airline', 'flight_number', 'seat', 'aircraft_type', 'flight_hours', 'seat_class', 'seat_type', 'is_exit_row'];
         let csvContent = headers.join(',') + '\n';
         
         globalFlights.forEach(f => {
@@ -429,7 +434,8 @@
             airportFlightsInfo: {}, 
             seatStats: { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 },
             yearlyDist: {}, monthlyCount: new Array(12).fill(0),
-            takeoffStats: new Array(24).fill(0), // 🚀 新增：24小時起飛時段統計
+            takeoffStats: new Array(24).fill(0),
+            landingStats: new Array(24).fill(0),
             timeline: [], tripsCount: 0
         };
 
@@ -474,12 +480,15 @@
                 stats.monthlyCount[m]++;
             }
 
-            // 🚀 分析起飛時間
+            // 🚀 分析起飛與降落時間
             if(f.takeoff_time) {
                 let hour = parseInt(f.takeoff_time.split(':')[0]);
-                if(!isNaN(hour) && hour >= 0 && hour < 24) {
-                    stats.takeoffStats[hour]++;
-                }
+                if(!isNaN(hour) && hour >= 0 && hour < 24) stats.takeoffStats[hour]++;
+            }
+            if(f.landing_time) {
+                let lHour = parseInt(f.landing_time.split(':')[0]);
+                if(!isNaN(lHour) && lHour >= 0 && lHour < 24) stats.landingStats[lHour]++;
+            }
             }
 
             if(!stats.airportFlightsInfo[f.origin_code]) stats.airportFlightsInfo[f.origin_code] = [];
@@ -672,6 +681,29 @@
                         // ☀️ 白天班機 (6-17) 用黃色，🌙 晚上/紅眼班機用藍色
                         backgroundColor: stats.takeoffStats.map((val, i) => 
                             (i >= 6 && i <= 17) ? 'rgba(250, 204, 21, 0.6)' : 'rgba(56, 189, 248, 0.6)' 
+                        ),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return ` ${context.label} - ${context.raw} 趟`; } } } },
+                    scales: { r: { ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' }, angleLines: { color: 'rgba(255,255,255,0.1)' } } }
+                }
+            });
+        }
+        // 🛬 繪製 24 小時降落時鐘
+        if(window.myLandingChart) window.myLandingChart.destroy();
+        const chartLandingCtx = document.getElementById('chart-landing');
+        if(chartLandingCtx) {
+            window.myLandingChart = new Chart(chartLandingCtx.getContext('2d'), {
+                type: 'polarArea',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [{
+                        data: stats.landingStats,
+                        // ☀️ 白天降落用綠色，🌙 晚上降落用紫色
+                        backgroundColor: stats.landingStats.map((val, i) => 
+                            (i >= 6 && i <= 17) ? 'rgba(34, 197, 94, 0.6)' : 'rgba(126, 87, 194, 0.6)' 
                         ),
                         borderWidth: 0
                     }]
@@ -957,7 +989,8 @@
         editingFlightId = id; 
         
         document.getElementById('inp-date').value = flight.flight_date || ''; 
-        document.getElementById('inp-takeoff').value = flight.takeoff_time || ''; // 🚀 補回編輯時間
+        document.getElementById('inp-takeoff').value = flight.takeoff_time || '';
+        document.getElementById('inp-landing').value = flight.landing_time || ''; // 👈 新增這行
         document.getElementById('inp-origin').value = flight.origin_code || ''; 
         document.getElementById('inp-dest').value = flight.dest_code || '';
         document.getElementById('inp-airline').value = flight.airline || ''; 
@@ -1005,7 +1038,8 @@
 
         const payload = {
             flight_date: document.getElementById('inp-date').value || null, 
-            takeoff_time: document.getElementById('inp-takeoff').value || null, // 🚀 補回寫入時間
+            takeoff_time: document.getElementById('inp-takeoff').value || null,
+            landing_time: document.getElementById('inp-landing').value || null,
             origin_code: originInput, dest_code: destInput,
             airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null,
             seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null,
