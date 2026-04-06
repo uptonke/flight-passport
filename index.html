@@ -39,7 +39,6 @@
             <div class="text-xl font-black flex items-center gap-2" id="db-status">Initializing...</div>
         </div>
         <div class="h-8 w-px bg-white/20 mx-2"></div>
-        <button onclick="toggleMapStyle()" id="btn-style-toggle" class="text-xs font-bold text-sky-400 hover:text-white transition-colors">切換模式 Mode</button>
         <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">匯出 CSV</button>
         <label class="text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer">
             匯入 CSV
@@ -170,33 +169,25 @@
             <h2 class="text-2xl font-bold">新增航班 Add Flight</h2>
             <button onclick="toggleModal('addFlightModal')" class="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
-        <form id="flightForm" class="space-y-4" onsubmit="submitFlight(event)">
-            <div class="grid grid-cols-3 gap-4 mb-2">
-                <div><label class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+        <form id="flightForm" class="space-y-5" onsubmit="submitFlight(event)">
+            <div class="grid grid-cols-3 gap-4">
+                <div><label class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">降落 Landing</label><input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
             </div>
+            
             <div class="grid grid-cols-2 gap-4">
                 <div><label class="block text-xs text-gray-400 mb-1">出發地 Origin</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">目的地 Dest</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
             </div>
+            
             <div class="grid grid-cols-3 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">航空公司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="BR"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">航司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="BR"></div>
                 <div><label class="block text-xs text-gray-400 mb-1">航班號 Flight No.</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="87"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">座位 Seat</label><input type="text" id="inp-seat" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">機型 Aircraft</label><input type="text" id="inp-type" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2"></div>
             </div>
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">機型 Aircraft</label>
-                <input type="text" id="inp-type" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2">
-            </div>
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">時長 Duration</label>
-                <div class="flex gap-2">
-                    <input type="number" id="inp-hh" placeholder="h" class="w-1/2 bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-center" min="0">
-                    <input type="number" id="inp-mm" placeholder="m" class="w-1/2 bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-center" min="0" max="59">
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
+
+            <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">艙等 Class</label>
                     <select id="inp-seat-class" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
@@ -208,7 +199,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">位置 Seat Type</label>
+                    <label class="block text-xs text-gray-400 mb-1">位置 Type</label>
                     <select id="inp-seat-type" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
                         <option value="">未指定 None</option>
                         <option value="Window">靠窗 Window</option>
@@ -216,12 +207,15 @@
                         <option value="Aisle">走道 Aisle</option>
                     </select>
                 </div>
+                <div><label class="block text-xs text-gray-400 mb-1">座位號 Seat</label><input type="text" id="inp-seat" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase"></div>
             </div>
+
             <div class="flex items-center pt-2">
                 <input type="checkbox" id="inp-exit-row" class="w-4 h-4 rounded bg-white/10 border border-white/10 text-sky-500 cursor-pointer">
                 <label for="inp-exit-row" class="ml-2 text-sm text-gray-300 cursor-pointer">逃生門 Exit Row</label>
             </div>
-            <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4">儲存 Save</button>
+            
+            <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4 transition-colors">儲存 Save</button>
         </form>
     </div>
 </div>
@@ -440,7 +434,13 @@
         };
 
         const validFlights = flights.filter(f => f.origin_code && f.dest_code && airportDB[f.origin_code] && airportDB[f.dest_code]);
-        stats.timeline = [...validFlights].sort((a, b) => (new Date(a.flight_date || 0)) - (new Date(b.flight_date || 0)));
+        
+        // 🚀 排序引擎升級：結合「日期 + 起飛時間」進行精準排序
+        stats.timeline = [...validFlights].sort((a, b) => {
+            const dateA = new Date(`${a.flight_date || '1970-01-01'}T${a.takeoff_time || '00:00'}:00`).getTime();
+            const dateB = new Date(`${b.flight_date || '1970-01-01'}T${b.takeoff_time || '00:00'}:00`).getTime();
+            return dateA - dateB; 
+        });
 
         const uniqueDates = new Set(stats.timeline.filter(f => f.flight_date).map(f => f.flight_date));
         stats.tripsCount = uniqueDates.size;
@@ -752,30 +752,11 @@
     // 4️⃣ Map Layer (地圖與單一渲染引擎)
     // ==========================================
     mapboxgl.accessToken = MAPBOX_TOKEN;
+    const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
     
-    // 🌓 自動偵測當前時間，決定初始風格為白天或黑夜
-    const currentHour = new Date().getHours();
-    const isNightNow = currentHour >= 18 || currentHour < 6;
-    let currentMapStyle = isNightNow ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/satellite-streets-v12';
-
-    const map = new mapboxgl.Map({ container: 'map', style: currentMapStyle, center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
-    
-    // 🚨 每次 Style 載入完畢後，重新掛上星空大氣層與我們自訂的圖層 (防呆：確保不是第一次載入)
     map.on('style.load', () => {
         map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
-        document.getElementById('btn-style-toggle').innerText = currentMapStyle.includes('dark') ? '切換衛星 Day Mode' : '切換夜間 Night Mode';
-        
-        if (isAppInitialized) {
-            // 切換 Style 會清空所有 Source，必須重新繪製
-            renderApp();
-        }
     });
-
-    // 🌓 手動切換日夜模式
-    window.toggleMapStyle = function() {
-        currentMapStyle = currentMapStyle.includes('dark') ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/dark-v11';
-        map.setStyle(currentMapStyle);
-    }
 
     function renderMapMarkers(stats) {
         let airportFeatures = [];
@@ -997,15 +978,7 @@
         document.getElementById('inp-seat').value = flight.seat || ''; 
         document.getElementById('inp-type').value = flight.aircraft_type || '';
         
-        if(flight.flight_hours) {
-            const h = Math.floor(flight.flight_hours); 
-            document.getElementById('inp-hh').value = h; 
-            document.getElementById('inp-mm').value = Math.round((flight.flight_hours - h) * 60);
-        } else { 
-            document.getElementById('inp-hh').value = ''; 
-            document.getElementById('inp-mm').value = ''; 
-        }
-        
+                
         document.getElementById('inp-seat-class').value = flight.seat_class || ''; 
         document.getElementById('inp-seat-type').value = flight.seat_type || '';
         document.getElementById('inp-exit-row').checked = flight.is_exit_row || false;
@@ -1026,24 +999,23 @@
         btn.innerText = '處理中...'; 
         btn.disabled = true;
 
-        let hh = parseInt(document.getElementById('inp-hh').value) || 0; 
-        let mm = parseInt(document.getElementById('inp-mm').value) || 0;
-        let flightHours = (hh > 0 || mm > 0) ? (hh + (mm / 60)) : null;
-
-        if (!flightHours) {
-            const distKm = turf.distance(airportDB[originInput].coords, airportDB[destInput].coords, {units: 'kilometers'});
-            flightHours = parseFloat(((distKm / 850) + 0.5).toFixed(1));
-        }
+        // 🔥 核心修改：捨棄手動輸入，根據航線距離全自動精算時長 (850km/h + 起降緩衝 0.5h)
+        const distKm = turf.distance(airportDB[originInput].coords, airportDB[destInput].coords, {units: 'kilometers'});
+        const autoFlightHours = parseFloat(((distKm / 850) + 0.5).toFixed(1));
 
         const payload = {
             flight_date: document.getElementById('inp-date').value || null, 
-            takeoff_time: document.getElementById('inp-takeoff').value || null,
-            landing_time: document.getElementById('inp-landing').value || null,
+            takeoff_time: document.getElementById('inp-takeoff').value || null, 
+            landing_time: document.getElementById('inp-landing').value || null, 
             origin_code: originInput, dest_code: destInput,
-            airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null,
-            seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null,
-            seat_type: document.getElementById('inp-seat-type').value || null, is_exit_row: document.getElementById('inp-exit-row').checked,
-            aircraft_type: document.getElementById('inp-type').value || null, flight_hours: flightHours
+            airline: document.getElementById('inp-airline').value || null, 
+            flight_number: document.getElementById('inp-flight-number').value || null,
+            seat: document.getElementById('inp-seat').value.toUpperCase() || null, 
+            seat_class: document.getElementById('inp-seat-class').value || null,
+            seat_type: document.getElementById('inp-seat-type').value || null, 
+            is_exit_row: document.getElementById('inp-exit-row').checked,
+            aircraft_type: document.getElementById('inp-type').value || null, 
+            flight_hours: autoFlightHours // 👈 自動寫入
         };
 
         await saveFlight(payload, editingFlightId);
