@@ -784,7 +784,7 @@
         const route = turf.greatCircle(origin, destination);
         const lineDistance = turf.length(route);
         const arcCoordinates = [];
-        for (let i = 0; i <= lineDistance; i += lineDistance / 150) arcCoordinates.push(turf.along(route, i).geometry.coordinates);
+        for (let i = 0; i <= lineDistance; i += lineDistance / 400) arcCoordinates.push(turf.along(route, i).geometry.coordinates);
         arcCoordinates.push(destination); 
 
         map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [arcCoordinates[0], arcCoordinates[0]] } } });
