@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人數位飛行護照 Ultimate</title>
+    <title>個人數位飛行護照 </title>
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
     <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
@@ -473,8 +473,7 @@
                     </div>`;
 
                 // 🔥 新增：計算起飛時間差 (最舊的航班 delay=0，越新的越晚起飛，每架間隔 800 毫秒)
-               let rank = timelineFlights.findIndex(tf => tf.id === f.id);
-                let takeoffDelay = rank * 800; // rank 越小(越舊)就越早起飛，每架間距 800 毫秒
+                let takeoffDelay = (filteredFlights.length - 1 - i) * 800; 
                 drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
                 if(f.status && f.status.includes('完成')) {
@@ -821,16 +820,10 @@
                 animCounter++;
                 requestAnimationFrame(animate);
             } else {
-                // 🔥 終極 Loop 引擎：抵達終點後不刪除，重置計數器回到起點
-                animCounter = 1;
-                
-                // 讓飛機在目的地停泊 2 秒鐘 (2000 毫秒) 後，再次起飛形成無限輪迴
-                // 你可以依照 Vibe 自行調整 2000 這個數字
-                setTimeout(() => {
-                    requestAnimationFrame(animate);
-                }, 2000);
+                planeMarker.remove(); 
             }
         }
+       // 🔥 替換成這行 (套用我們傳進來的時間軸)
         setTimeout(() => animate(), delay + 500); 
     }
 </script>
