@@ -787,7 +787,7 @@
         const route = turf.greatCircle(origin, destination);
         const lineDistance = turf.length(route);
         const arcCoordinates = [];
-        for (let i = 0; i <= lineDistance; i += lineDistance / 400) arcCoordinates.push(turf.along(route, i).geometry.coordinates);
+        for (let i = 0; i <= lineDistance; i += lineDistance / 250) arcCoordinates.push(turf.along(route, i).geometry.coordinates);
         arcCoordinates.push(destination); 
 
         map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [arcCoordinates[0], arcCoordinates[0]] } } });
@@ -827,7 +827,7 @@
             }
         }
        // 🔥 替換成這行 (套用我們傳進來的時間軸)
-        setTimeout(() => animate(), delay + 100); 
+        setTimeout(() => animate(), delay + 1000); 
     }
 </script>
 </body>
