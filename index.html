@@ -476,7 +476,7 @@
                 
                // 🔥 引擎接上軌道：去 timelineFlights 裡面查這架飛機的絕對時間排名
                 let rank = timelineFlights.findIndex(tf => tf.id === f.id);
-                let takeoffDelay = rank * 2000;
+                let takeoffDelay = rank * 5000;
                 drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
                 if(f.status && f.status.includes('完成')) {
@@ -827,7 +827,7 @@
             }
         }
        // 🔥 替換成這行 (套用我們傳進來的時間軸)
-        setTimeout(() => animate(), delay + 1000); 
+        setTimeout(() => animate(), delay + 1300); 
     }
 </script>
 </body>
