@@ -323,7 +323,8 @@
         // === 港澳與中國 HK/Macau/China ===
         'CX': '國泰航空 Cathay Pacific', 'UO': '香港快運 HK Express', 'HX': '香港航空 Hong Kong Airlines', 
         'NX': '澳門航空 Air Macau', 'CA': '中國航空 Air China', 'MU': '東方航空 China Eastern', 
-        'CZ': '南方航空 China Southern', 'MF': '廈門航空 XiamenAir', '9C': '春秋航空 Spring Airlines', 'ZH': '深圳航空 Shenzhen Airlines',
+        'CZ': '南方航空 China Southern', 'MF': '廈門航空 XiamenAir', '9C': '春秋航空 Spring Airlines', 
+        'ZH': '深圳航空 Shenzhen Airlines','HB': '大灣區航空 Greater bay Airlines',
 
         // === 東南亞 Southeast Asia ===
         'SQ': '新加坡航空 Singapore Airlines', 'TR': '酷航 Scoot', '3K': '捷星亞洲 Jetstar Asia',
@@ -774,24 +775,7 @@
         });
         document.getElementById('year-filters').innerHTML = filterHTML;
 
-        let spinEnabled = true;
-        function spinGlobe() {
-            const zoom = map.getZoom();
-            // 🔥 拔除會報錯的 !map.isInteracting()
-            if (spinEnabled && !map.isZooming() && zoom < 5) {
-                let distancePerSecond = 360 / 120;
-                map.easeTo({ bearing: map.getBearing() + distancePerSecond * (1000/60), duration: 1000, easing: (n) => n });
-            }
-            requestAnimationFrame(spinGlobe);
-        }
-        spinGlobe();
-        
-        // 🔥 升級控制開關：偵測「拖曳」與「縮放」時暫停自轉，體驗更順暢
-        map.on('dragstart', () => spinEnabled = false);
-        map.on('dragend', () => spinEnabled = true);
-        map.on('zoomstart', () => spinEnabled = false);
-        map.on('zoomend', () => spinEnabled = true);
-
+       
         renderMapAndData(); 
     });
 
