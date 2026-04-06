@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人數位飛行護照 </title>
+    <title>飛行紀錄✈️ </title>
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
     <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
@@ -298,7 +298,7 @@
 </div>
 
 <script>
-   const MAPBOX_TOKEN = 'pk.eyJ1IjoidXB0b25rZSIsImEiOiJjbW5sNnNwajAxNnY2MnJvZ3kzcDNqN2NlIn0.oriWVIXM8Oy80ZExDHSJUA';
+    const MAPBOX_TOKEN = 'pk.eyJ1IjoidXB0b25rZSIsImEiOiJjbW5sNnNwajAxNnY2MnJvZ3kzcDNqN2NlIn0.oriWVIXM8Oy80ZExDHSJUA';
     const SUPABASE_URL = 'https://yrccanqxzrcoknzabifz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_lDfwRDxgMhzRwVk0-Qu3vg_9HTmTFZy';
 
@@ -397,11 +397,14 @@
                 if (a.code) {
                     let code = a.code.toUpperCase();
                     let airportInfo = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
-                    if (manualOverrides[code]) airportInfo = { ...airportInfo, ...manualOverrides[code] };
+                    if (manualOverrides[code]) {
+                        airportInfo = { ...airportInfo, ...manualOverrides[code] };
+                    }
                     airportDB[code] = airportInfo;
                     options += `<option value="${code}">${airportInfo.name} (${airportInfo.city})</option>`;
                 }
             });
+
             document.getElementById('iata-list').innerHTML = options;
         } catch (e) { console.error('字典載入失敗', e); }
     }
@@ -422,11 +425,11 @@
     function renderMapAndData() {
         document.getElementById('flight-list').innerHTML = '';
         
-        // 🚀 1. 殺死舊引擎：徹底清除舊有圖層與資料源
-        const layersToRemove = ['routes-static-line', 'routes-static-hitbox', 'planes-layer', 'airports-glow', 'airports-core'];
-        layersToRemove.forEach(id => { if(map.getLayer(id)) map.removeLayer(id); });
-        const sourcesToRemove = ['routes-source', 'planes-source', 'airports'];
-        sourcesToRemove.forEach(id => { if(map.getSource(id)) map.removeSource(id); });
+        // 🚀 退回原版：清除 r- 開頭的多圖層與資料源
+        if (map.getStyle()) {
+            map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-')) map.removeLayer(l.id); });
+            Object.keys(map.getStyle().sources).forEach(s => { if (s.startsWith('r-')) map.removeSource(s); });
+        }
 
         let totalKm = 0, totalHours = 0, completedFlights = 0;
         let domCount = 0, intCount = 0, longCount = 0;
@@ -456,50 +459,24 @@
             return dateA - dateB; 
         });
 
-        // 🚀 2. 幾何快取 (Memoization) + 建立單一靜態線條池
-        let staticRouteFeatures = [];
-
         filteredFlights.forEach((f, i) => {
             const orig = airportDB[f.origin_code], dest = airportDB[f.dest_code];
             if(orig && dest) {
-                // 快取距離：算過一次就不重算，解放 CPU
+                // 距離快取機制保留，幫助省效能
                 f.distance ||= turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
-                const dist = f.distance; 
+                const dist = f.distance;
                 
                 const routeName = `${f.origin_code} ✈️ ${f.dest_code}`;              
                 const routeKey = [f.origin_code, f.dest_code].sort().join('-');
                 const freqCount = routeFreq[routeKey] || 1;
                 const routeColor = (f.status && f.status.includes('計畫')) ? '#6b7280' : getRouteColor(freqCount);
-
-                // 快取大圓航線座標：算過一次就存起來供動畫引擎使用
-                if (!f.routeCoords) {
-                    const route = turf.greatCircle(orig.coords, dest.coords);
-                    const lineDist = turf.length(route);
-                    const arcCoords = [];
-                    // 這裡的 400 決定了航線切割的細緻度
-                    for (let d = 0; d <= lineDist; d += lineDist / 400) arcCoords.push(turf.along(route, d).geometry.coordinates);
-                    arcCoords.push(dest.coords);
-                    f.routeCoords = arcCoords;
-                }
-
-                staticRouteFeatures.push({
-                    type: 'Feature',
-                    properties: { routeName: routeName, color: routeColor, dist: dist },
-                    geometry: { type: 'LineString', coordinates: f.routeCoords }
-                });
-
-                // 初始化時間軸與排名狀態
-                let rank = timelineFlights.indexOf(f);
-                f.takeoffDelay = rank * 2000 + 1300; 
-                f.animStep = 0;
-                f.isFinished = false;
-
+                
                 const logoUrl = getAirlineLogoUrl(f.airline); 
                 const airlineDisplay = f.airline ? (logoUrl ? `<img src="${logoUrl}" alt="${f.airline}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
                 const dateBadge = f.flight_date ? `<span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date.substring(0,4)}</span>` : '';
 
                 document.getElementById('flight-list').innerHTML += `
-                    <div class="bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 group cursor-pointer hover:bg-white/10 transition-colors" onclick="focusFlight('${f.origin_code}', '${f.dest_code}', '${routeName}', ${dist})">
+                    <div class="bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 group">
                         ${airlineDisplay} 
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-center mb-0.5">
@@ -507,13 +484,18 @@
                                 <div class="flex items-center gap-1 shrink-0 ml-2">
                                     ${dateBadge}
                                     <span class="text-[10px] font-bold border border-current px-2 py-0.5 rounded-full" style="color: ${routeColor}">${f.status||'已完成'}</span>
-                                    <button onclick="event.stopPropagation(); editFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">✏️</button>
-                                    <button onclick="event.stopPropagation(); deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
+                                    <button onclick="editFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">✏️</button>
+                                    <button onclick="deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
                                 </div>
                             </div>
                             <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
                         </div>
                     </div>`;
+
+                // 🚀 退回原版：使用獨立航班的動畫觸發機制
+                let rank = timelineFlights.indexOf(f);
+                let takeoffDelay = rank * 2000; 
+                drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
                 if(f.status && f.status.includes('完成')) {
                     totalKm += dist;
@@ -544,75 +526,7 @@
             }
         });
 
-        // 🚀 3. 單一資料源架構 (Single Source)：一次繪製所有靜態航線
-        map.addSource('routes-source', { type: 'geojson', data: { type: 'FeatureCollection', features: staticRouteFeatures } });
-        
-        map.addLayer({ id: 'routes-static-line', type: 'line', source: 'routes-source', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.4 } });
-        // Hitbox 隱形熱區，方便點擊
-        map.addLayer({ id: 'routes-static-hitbox', type: 'line', source: 'routes-source', paint: { 'line-color': 'transparent', 'line-width': 15 } });
-
-        // 🚀 4. GPU 飛機圖層 (統一管理所有飛機)
-        map.addSource('planes-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        map.addLayer({ 
-            id: 'planes-layer', type: 'symbol', source: 'planes-source', 
-            layout: { 'text-field': '✈️', 'text-size': 18, 'icon-rotation-alignment': 'map', 'text-rotate': ['get', 'bearing'], 'text-allow-overlap': true, 'text-ignore-placement': true } 
-        });
-
-        // 🎥 點擊航線 -> 觸發單點聚焦運鏡 (Focus Mode)
-        map.on('click', 'routes-static-hitbox', (e) => {
-            const props = e.features[0].properties;
-            const coords = e.features[0].geometry.coordinates;
-            const midPoint = coords[Math.floor(coords.length / 2)];
-
-            new mapboxgl.Popup({ closeButton: false })
-                .setLngLat(e.lngLat)
-                .setHTML(`<div><div class="text-[10px] text-gray-400 font-bold">FLIGHT ROUTE</div><div class="text-lg font-black text-white">${props.routeName}</div><div class="text-xs text-sky-400 mt-1 font-bold">${Math.round(props.dist)} km</div></div>`)
-                .addTo(map);
-
-            map.flyTo({ center: midPoint, zoom: 4.5, pitch: 60, essential: true, duration: 2500 });
-        });
-        map.on('mouseenter', 'routes-static-hitbox', () => map.getCanvas().style.cursor = 'pointer');
-        map.on('mouseleave', 'routes-static-hitbox', () => map.getCanvas().style.cursor = '');
-
-        // ⚙️ 全域動畫引擎 (Global requestAnimationFrame)
-        const startTime = performance.now();
-        if (window.flightAnimId) cancelAnimationFrame(window.flightAnimId);
-
-        function renderEngine(timestamp) {
-            let elapsed = timestamp - startTime;
-            let currentPlanes = []; // 只收集目前正在天上飛的飛機
-
-            filteredFlights.forEach(f => {
-                if (f.isFinished || !f.routeCoords) return;
-
-                if (elapsed > f.takeoffDelay) {
-                    if (f.animStep < f.routeCoords.length - 1) {
-                        const p1 = f.routeCoords[f.animStep];
-                        // 確保下一步不會超出陣列
-                        const stepNext = Math.min(f.animStep + 2, f.routeCoords.length - 1);
-                        const p2 = f.routeCoords[stepNext];
-                        const bearing = turf.bearing(p1, p2) - 45; // 減 45 度是為了讓 emoji 機頭對齊
-
-                        currentPlanes.push({ type: 'Feature', properties: { bearing: bearing }, geometry: { type: 'Point', coordinates: p2 } });
-                        f.animStep += 2; // 這裡控制單架飛機在天上的移動速度
-                    } else {
-                        f.isFinished = true; // 抵達目的地，移出渲染列
-                    }
-                }
-            });
-
-            // 💯 只要更新這一次，Mapbox 的 GPU 就會幫我們畫出天上所有的飛機
-            if (map.getSource('planes-source')) {
-                map.getSource('planes-source').setData({ type: 'FeatureCollection', features: currentPlanes });
-            }
-
-            if (filteredFlights.some(f => !f.isFinished && f.routeCoords)) {
-                window.flightAnimId = requestAnimationFrame(renderEngine);
-            }
-        }
-        window.flightAnimId = requestAnimationFrame(renderEngine);
-
-        // --- Dashboard UI 更新區 ---
+        // Dashboard UI 更新區
         document.getElementById('stat-dist').innerText = Math.round(totalKm).toLocaleString();
         document.getElementById('stat-flights').innerText = completedFlights;
         if(completedFlights > 0) {
@@ -628,7 +542,6 @@
         }
 
         document.getElementById('pp-dist').innerText = Math.round(totalKm).toLocaleString();
-        
         const earthRatio = (totalKm / 40075);
         const moonRatio = (totalKm / 384400);
         document.getElementById('pp-earth').innerText = earthRatio.toFixed(1);
@@ -639,7 +552,6 @@
         const avgHours = completedFlights ? (totalHours / completedFlights) : 0;
         const hrs = Math.floor(totalHours);
         const mins = Math.round((totalHours - hrs) * 60);
-        
         document.getElementById('pp-time-main').innerHTML = `${hrs}<span class="text-2xl text-gray-500">h</span> ${mins}<span class="text-2xl text-gray-500">m</span>`;
         document.getElementById('pp-days').innerText = (totalHours / 24).toFixed(1);
         document.getElementById('pp-avg-time').innerText = `${Math.floor(avgHours)}h ${Math.round((avgHours-Math.floor(avgHours))*60)}m`;
@@ -652,10 +564,7 @@
 
         const classColors = { 'Economy': '#bae6fd', 'Premium Economy': '#7dd3fc', 'Business': '#0284c7', 'First Class': '#082f49' };
         const typeColors = { 'Window': '#3b82f6', 'Middle': '#f59e0b', 'Aisle': '#22c55e' };
-        const chartDict = {
-            'Economy': '經濟艙', 'Premium Economy': '豪華經濟艙', 'Business': '商務艙', 'First Class': '頭等艙',
-            'Window': '靠窗', 'Middle': '中間', 'Aisle': '走道'
-        };
+        const chartDict = { 'Economy': '經濟艙', 'Premium Economy': '豪華經濟艙', 'Business': '商務艙', 'First Class': '頭等艙', 'Window': '靠窗', 'Middle': '中間', 'Aisle': '走道' };
 
         const renderDonut = (data, colors, total, chartId, legendId, topNameId) => {
             let gradient = [], currentAngle = 0, legendHTML = '', topName = '--', maxVal = 0;
@@ -688,16 +597,13 @@
             
             container.innerHTML = sorted.slice(0, 10).map(item => {
                 const name = item[0], count = item[1];
-                let displayName = name;
-                let logoDisplay = '';
+                let displayName = name; let logoDisplay = '';
                 if(listType === 'airline') {
                     const logoUrl = getAirlineLogoUrl(name);
                     logoDisplay = logoUrl ? `<img src="${logoUrl}" alt="${name}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-1 mr-3 shrink-0">` : '';
                     displayName = airlineDB[name] ? `${name} ${airlineDB[name]}` : name;
                 }
-                if(listType === 'airport' && airportDB[name]) {
-                    displayName = `${name} ${airportDB[name].city}`;
-                }
+                if(listType === 'airport' && airportDB[name]) { displayName = `${name} ${airportDB[name].city}`; }
                 const widthPercent = (count/maxVal)*100;
                 return `
                     <div class="flex items-center text-sm">
@@ -718,9 +624,7 @@
 
         let airportFeatures = [];
         for (let [code, count] of Object.entries(freq.airports)) {
-            if (airportDB[code]) {
-                airportFeatures.push({ type: 'Feature', properties: { code: code, count: count, name: airportDB[code].name, city: airportDB[code].city }, geometry: { type: 'Point', coordinates: airportDB[code].coords } });
-            }
+            if (airportDB[code]) airportFeatures.push({ type: 'Feature', properties: { code: code, count: count, name: airportDB[code].name, city: airportDB[code].city }, geometry: { type: 'Point', coordinates: airportDB[code].coords } });
         }
         if(map.getSource('airports')) { map.getSource('airports').setData({ type: 'FeatureCollection', features: airportFeatures }); } 
         else {
@@ -741,30 +645,13 @@
         if(window.myMonthlyChart) window.myMonthlyChart.destroy();
         
         window.myYearlyChart = new Chart(document.getElementById('chart-yearly').getContext('2d'), {
-            type: 'line',
-            data: { labels: Object.keys(yearlyDist).sort(), datasets: [{ data: Object.keys(yearlyDist).sort().map(k => Math.round(yearlyDist[k])), borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', fill: true, tension: 0.4 }] },
+            type: 'line', data: { labels: Object.keys(yearlyDist).sort(), datasets: [{ data: Object.keys(yearlyDist).sort().map(k => Math.round(yearlyDist[k])), borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', fill: true, tension: 0.4 }] },
             options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { display: false } }, y: { display: false } } }
         });
-
         window.myMonthlyChart = new Chart(document.getElementById('chart-monthly').getContext('2d'), {
-            type: 'bar',
-            data: { labels: ['J','F','M','A','M','J','J','A','S','O','N','D'], datasets: [{ data: monthlyCount, backgroundColor: '#facc15', borderRadius: 4 }] },
+            type: 'bar', data: { labels: ['J','F','M','A','M','J','J','A','S','O','N','D'], datasets: [{ data: monthlyCount, backgroundColor: '#facc15', borderRadius: 4 }] },
             options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { display: false } }, y: { display: false } } }
         });
-    }
-
-    // 🎥 提供給左側清單點擊時使用的獨立運鏡函數
-    window.focusFlight = function(origin, dest, routeName, dist) {
-        const o = airportDB[origin], d = airportDB[dest];
-        if(!o || !d) return;
-        const midPoint = turf.midpoint(turf.point(o.coords), turf.point(d.coords)).geometry.coordinates;
-        
-        new mapboxgl.Popup({ closeButton: false })
-            .setLngLat(midPoint)
-            .setHTML(`<div><div class="text-[10px] text-gray-400 font-bold">FLIGHT ROUTE</div><div class="text-lg font-black text-white">${routeName}</div><div class="text-xs text-sky-400 mt-1 font-bold">${Math.round(dist)} km</div></div>`)
-            .addTo(map);
-
-        map.flyTo({ center: midPoint, zoom: 4.5, pitch: 60, essential: true, duration: 2500 });
     }
 
     map.on('load', async () => {
@@ -778,9 +665,7 @@
 
         const years = new Set();
         currentFlights.forEach(f => {
-            if (f.flight_date) {
-                years.add(f.flight_date.substring(0, 4));
-            }
+            if (f.flight_date) years.add(f.flight_date.substring(0, 4));
         });
         const sortedYears = Array.from(years).sort().reverse(); 
         
@@ -794,20 +679,16 @@
     });
 
     function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
-    
     function openAddModal() {
-        editingFlightId = null; 
-        document.getElementById('flightForm').reset();
-        document.getElementById('submitBtn').innerText = '寫入護照';
-        document.querySelector('#addFlightModal h2').innerText = '新增航班';
+        editingFlightId = null; document.getElementById('flightForm').reset();
+        document.getElementById('submitBtn').innerText = '寫入護照'; document.querySelector('#addFlightModal h2').innerText = '新增航班';
         toggleModal('addFlightModal');
     }
 
     async function deleteFlight(id) {
         if(!confirm('確定要從護照中刪除這筆航班嗎？')) return;
         const { error } = await supabaseClient.from('flights').delete().eq('id', id);
-        if(error) alert('刪除失敗，請檢查資料庫連線');
-        else location.reload(); 
+        if(error) alert('刪除失敗，請檢查資料庫連線'); else location.reload(); 
     }
 
     function editFlight(id) {
@@ -816,46 +697,32 @@
         editingFlightId = id; 
         
         document.getElementById('inp-date').value = flight.flight_date || ''; 
-        document.getElementById('inp-origin').value = flight.origin_code || '';
-        document.getElementById('inp-dest').value = flight.dest_code || '';
-        document.getElementById('inp-airline').value = flight.airline || '';
-        document.getElementById('inp-flight-number').value = flight.flight_number || '';
-        document.getElementById('inp-seat').value = flight.seat || '';
-        document.getElementById('inp-type').value = flight.aircraft_type || '';
+        document.getElementById('inp-origin').value = flight.origin_code || ''; document.getElementById('inp-dest').value = flight.dest_code || '';
+        document.getElementById('inp-airline').value = flight.airline || ''; document.getElementById('inp-flight-number').value = flight.flight_number || '';
+        document.getElementById('inp-seat').value = flight.seat || ''; document.getElementById('inp-type').value = flight.aircraft_type || '';
         document.getElementById('inp-status').value = flight.status || '已完成';
         
         if(flight.flight_hours) {
-            const h = Math.floor(flight.flight_hours);
-            document.getElementById('inp-hh').value = h;
-            document.getElementById('inp-mm').value = Math.round((flight.flight_hours - h) * 60);
-        } else {
-            document.getElementById('inp-hh').value = '';
-            document.getElementById('inp-mm').value = '';
-        }
+            const h = Math.floor(flight.flight_hours); document.getElementById('inp-hh').value = h; document.getElementById('inp-mm').value = Math.round((flight.flight_hours - h) * 60);
+        } else { document.getElementById('inp-hh').value = ''; document.getElementById('inp-mm').value = ''; }
         
-        document.getElementById('inp-seat-class').value = flight.seat_class || '';
-        document.getElementById('inp-seat-type').value = flight.seat_type || '';
+        document.getElementById('inp-seat-class').value = flight.seat_class || ''; document.getElementById('inp-seat-type').value = flight.seat_type || '';
         document.getElementById('inp-exit-row').checked = flight.is_exit_row || false;
 
-        document.getElementById('submitBtn').innerText = '更新紀錄';
-        document.querySelector('#addFlightModal h2').innerText = '編輯航班紀錄';
+        document.getElementById('submitBtn').innerText = '更新紀錄'; document.querySelector('#addFlightModal h2').innerText = '編輯航班紀錄';
         toggleModal('addFlightModal');
     }
 
     async function submitFlight(e) {
         e.preventDefault();
-        const originInput = document.getElementById('inp-origin').value.toUpperCase();
-        const destInput = document.getElementById('inp-dest').value.toUpperCase();
+        const originInput = document.getElementById('inp-origin').value.toUpperCase(); const destInput = document.getElementById('inp-dest').value.toUpperCase();
 
         if (!airportDB[originInput]) return alert(`找不到出發地代碼：${originInput}`);
         if (!airportDB[destInput]) return alert(`找不到目的地代碼：${destInput}`);
 
-        const btn = document.getElementById('submitBtn');
-        btn.innerText = '處理中...'; 
-        btn.disabled = true;
+        const btn = document.getElementById('submitBtn'); btn.innerText = '處理中...'; btn.disabled = true;
 
-        let hh = parseInt(document.getElementById('inp-hh').value) || 0;
-        let mm = parseInt(document.getElementById('inp-mm').value) || 0;
+        let hh = parseInt(document.getElementById('inp-hh').value) || 0; let mm = parseInt(document.getElementById('inp-mm').value) || 0;
         let flightHours = (hh > 0 || mm > 0) ? (hh + (mm / 60)) : null;
 
         if (!flightHours) {
@@ -864,34 +731,80 @@
         }
 
         const payload = {
-            flight_date: document.getElementById('inp-date').value || null, 
-            origin_code: originInput, dest_code: destInput,
-            airline: document.getElementById('inp-airline').value || null,
-            flight_number: document.getElementById('inp-flight-number').value || null,
-            seat: document.getElementById('inp-seat').value.toUpperCase() || null,
-            seat_class: document.getElementById('inp-seat-class').value || null,
-            seat_type: document.getElementById('inp-seat-type').value || null,
-            is_exit_row: document.getElementById('inp-exit-row').checked,
-            aircraft_type: document.getElementById('inp-type').value || null,
-            flight_hours: flightHours, status: document.getElementById('inp-status').value
+            flight_date: document.getElementById('inp-date').value || null, origin_code: originInput, dest_code: destInput,
+            airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null,
+            seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null,
+            seat_type: document.getElementById('inp-seat-type').value || null, is_exit_row: document.getElementById('inp-exit-row').checked,
+            aircraft_type: document.getElementById('inp-type').value || null, flight_hours: flightHours, status: document.getElementById('inp-status').value
         };
 
         let error;
         if (editingFlightId) {
-            const res = await supabaseClient.from('flights').update(payload).eq('id', editingFlightId);
-            error = res.error;
+            const res = await supabaseClient.from('flights').update(payload).eq('id', editingFlightId); error = res.error;
         } else {
-            const res = await supabaseClient.from('flights').insert([payload]);
-            error = res.error;
+            const res = await supabaseClient.from('flights').insert([payload]); error = res.error;
         }
 
-        if (error) { 
-            alert('寫入/更新失敗'); 
-            btn.disabled = false; 
-            btn.innerText = editingFlightId ? '更新紀錄' : '寫入護照';
-        } else { 
-            location.reload(); 
+        if (error) { alert('寫入/更新失敗'); btn.disabled = false; btn.innerText = editingFlightId ? '更新紀錄' : '寫入護照'; } 
+        else { location.reload(); }
+    }
+
+    // 🚀 退回原版：DOM 飛機與獨立畫線引擎
+    function drawAnimatedRoute(origin, destination, routeId, freqCount, status, delay = 0) {
+        let lineColor = (status && status.includes('計畫')) ? '#6b7280' : getRouteColor(freqCount);
+        const route = turf.greatCircle(origin, destination);
+        const lineDistance = turf.length(route);
+        const arcCoordinates = [];
+        for (let i = 0; i <= lineDistance; i += lineDistance / 250) arcCoordinates.push(turf.along(route, i).geometry.coordinates);
+        arcCoordinates.push(destination); 
+
+        map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [arcCoordinates[0], arcCoordinates[0]] } } });
+        
+        // 🌟 修改重點：將 'line-opacity' 提高到 0.85 讓顏色變得扎實飽滿
+        map.addLayer({ 
+            'id': `${routeId}-line`, 
+            'type': 'line', 
+            'source': routeId, 
+            'layout': { 'line-join': 'round', 'line-cap': 'round' }, 
+            'paint': { 'line-color': lineColor, 'line-width': 3, 'line-opacity': 0.85 } 
+        });
+
+        // 🔥 動態飛機 Marker
+        const elContainer = document.createElement('div');
+        const planeIcon = document.createElement('div');
+        planeIcon.innerHTML = '✈️';
+        planeIcon.style.fontSize = '18px';
+        planeIcon.style.transition = 'transform 0.1s linear'; // 讓旋轉更滑順
+        elContainer.appendChild(planeIcon);
+        
+        const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(arcCoordinates[0]).addTo(map);
+
+        let animCounter = 1; 
+        function animate() {
+            if (animCounter < arcCoordinates.length) {
+                const currentCoords = arcCoordinates.slice(0, animCounter + 1);
+                if(map.getSource(routeId)) {
+                    map.getSource(routeId).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': currentCoords } } ] });
+                }
+                
+                // 計算旋轉角度
+                const p1 = arcCoordinates[animCounter - 1];
+                const p2 = arcCoordinates[animCounter];
+                const bearing = turf.bearing(p1, p2);
+                planeMarker.setLngLat(p2);
+                
+                // 🚨 關鍵修復：只旋轉內部的 planeIcon，不碰外層的 Mapbox 定位容器
+                planeIcon.style.transform = `rotate(${bearing - 45}deg)`; 
+
+                animCounter++;
+                requestAnimationFrame(animate);
+            } else {
+                planeMarker.remove(); 
+            }
         }
+        
+        // 套用我們傳進來的時間軸
+        setTimeout(() => animate(), delay + 1300); 
     }
 </script>
 </body>
