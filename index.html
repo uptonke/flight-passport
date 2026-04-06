@@ -758,6 +758,7 @@
                 icon.style.transform = 'rotate(180deg)';
             }
         } catch(e) {
+            console.error("🔥 系統崩潰詳細原因：", e);
             document.getElementById('db-status').innerHTML = '<span class="text-red-500">連線失敗 Failed</span>';
         }
     }
