@@ -15,7 +15,11 @@
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         
         .glass-panel { background: rgba(20, 20, 22, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .flighty-panel { background: #0f0f13; }
+        .flighty-panel { 
+    background: #0f0f13; 
+    max-height: 85vh; /* 🚀 設定護照面板的最大高度，為邊距留出空間 */
+    overflow-y: auto; /* 🚀 當內容超出最大高度時，啟用垂直滾動條 */
+}
         
         .mapboxgl-ctrl-logo, .mapboxgl-ctrl-bottom-right { display: none !important; }
         ::-webkit-scrollbar { width: 6px; }
