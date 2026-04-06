@@ -533,8 +533,11 @@
         filteredFlights.forEach((f, i) => {
             const orig = airportDB[f.origin_code], dest = airportDB[f.dest_code];
             if(orig && dest) {
-                const dist = turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
-                const routeName = `${f.origin_code} ✈️ ${f.dest_code}`;
+                // 🔥 快取距離計算 (Memoization)：算過一次就存起來，大幅降低 Turf.js 負擔
+                f.distance ||= turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
+                const dist = f.distance; // 直接取用快取值
+                
+                const routeName = `${f.origin_code} ✈️ ${f.dest_code}`;              
                 const routeKey = [f.origin_code, f.dest_code].sort().join('-');
                 const freqCount = routeFreq[routeKey] || 1;
                 
