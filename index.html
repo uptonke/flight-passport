@@ -321,17 +321,29 @@
     let animationState = { startTime: 0, planes: [], isRunning: false };
 
     const airlineDB = {
-        'BR': '長榮 EVA Air', 'CI': '華航 China Airlines', 'JX': '星宇 STARLUX', 
-        'IT': '虎航 Tigerair', 'AE': '華信 Mandarin', 'B7': '立榮 UNI Air',
-        'JL': '日航 Japan Airlines', 'NH': '全日空 ANA', 'MM': '樂桃 Peach', 'GK': '捷星日本 Jetstar', 
-        'KE': '大韓 Korean Air', 'OZ': '韓亞 Asiana', '7C': '濟州 Jeju Air', 'TW': '德威 T\'way', 
-        'CX': '國泰 Cathay Pacific', 'UO': '香港快運 HK Express', 'HX': '香港航空 Hong Kong Air', 
-        'CA': '國航 Air China', 'MU': '東方 China Eastern', 'CZ': '南方 China Southern', 
-        'SQ': '新航 Singapore Air', 'TR': '酷航 Scoot', 'MH': '馬航 Malaysia Air', 'AK': '亞航 AirAsia', 
-        'TG': '泰航 Thai Airways', 'VN': '越航 Vietnam Air', 'PR': '菲航 Philippine Air', 
-        'AA': '美國航空 American', 'DL': '達美 Delta', 'UA': '聯合 United', 'AC': '加航 Air Canada',
-        'BA': '英航 British Air', 'LH': '德航 Lufthansa', 'AF': '法航 Air France', 'KL': '荷航 KLM', 
-        'EK': '阿聯酋 Emirates', 'QR': '卡達 Qatar', 'EY': '阿提哈德 Etihad'
+       'BR': '長榮航空 EVA Air', 'CI': '中華航空 China Airlines', 'JX': '星宇航空 STARLUX', 
+        'IT': '台灣虎航 Tigerair Taiwan', 'AE': '華信航空 Mandarin', 'B7': '立榮航空 UNI Air',
+        'JL': '日航航空 Japan Airlines', 'NH': '全日空 ANA', 
+        'MM': '樂桃航空 Peach', 'GK': '捷星日本 Jetstar Japan', 'BC': '天馬航空 Skymark', 'ZG': 'ZIPAIR',
+        'KE': '大韓航空 Korean Air', 'OZ': '韓亞航空 Asiana', 
+        '7C': '濟州航空 Jeju Air', 'TW': '德威航空 T\'way', 'LJ': '真航空 Jin Air', 'BX': '釜山航空 Air Busan',
+        'CX': '國泰航空 Cathay Pacific', 'UO': '香港快運 HK Express', 'HX': '香港航空 Hong Kong Airlines', 
+        'NX': '澳門航空 Air Macau', 'CA': '中國航空 Air China', 'MU': '東方航空 China Eastern', 
+        'CZ': '南方航空 China Southern', 'MF': '廈門航空 XiamenAir', '9C': '春秋航空 Spring Airlines', 
+        'ZH': '深圳航空 Shenzhen Airlines','HB': '大灣區航空 Greater bay Airlines',
+        'SQ': '新加坡航空 Singapore Airlines', 'TR': '酷航 Scoot', '3K': '捷星亞洲 Jetstar Asia',
+        'MH': '馬航 Malaysia Airlines', 'AK': '亞航 AirAsia', 'D7': '全亞航 AirAsia X',
+        'TG': '泰國航空 Thai Airways', 'FD': '泰亞航 Thai AirAsia', 'VZ': '泰越捷 Thai Vietjet',
+        'VN': '越南航空 Vietnam Airlines', 'VJ': '越捷 VietJet', 
+        'PR': '菲律賓航空 Philippine Airlines', '5J': '宿霧太平洋 Cebu Pacific', 
+        'GA': '印尼鷹航 Garuda Indonesia', 'JT': '獅航 Lion Air',
+        'AA': '美國航空 American Airlines', 'DL': '達美航空 Delta', 'UA': '聯合航空 United Airlines', 
+        'WN': '西南航空 Southwest Airlines', 'AS': '阿拉斯加航空 Alaska Airlines', 'B6': '捷藍 JetBlue',
+        'NK': '精神航空 Spirit Airlines', 'F9': '邊疆航空 Frontier Airlines', 'AC': '加拿大航空 Air Canada',
+        'BA': '英國航空 British Airways', 'LH': '德國航空 Lufthansa', 'AF': '法國航空 Air France', 
+        'KL': '荷蘭航空 KLM', 'LX': '瑞航 SWISS', 'AY': '芬蘭航空 Finnair', 'TK': '土耳其航空 Turkish Airlines',
+        'U2': '易捷 easyJet', 'FR': '瑞安航空 Ryanair', 'W6': '威茲航空 Wizz Air', 'VY': '伏林航空 Vueling', 'TP': '葡萄牙航空 TAP Air Portugal',
+        'EK': '阿聯酋航空 Emirates', 'QR': '卡達航空 Qatar Airways', 'EY': '阿提哈德航空 Etihad Airways'
     };
 
     // ==========================================
@@ -380,14 +392,20 @@
             const manualOverrides = {
                 'TPE': { city: '桃園 Taipei' }, 'TSA': { city: '松山 Taipei' },                
                 'HND': { city: '東京羽田 Tokyo' }, 'NRT': { city: '東京成田 Tokyo' }, 'KIX': { city: '大阪 Osaka' },
-                'OKA': { city: '沖繩 Okinawa' }, 'CTS': { city: '札幌 Sapporo' }, 'FUK': { city: '福岡 Fukuoka' },
+                'OKA': { city: '沖繩 Okinawa' }, 'CTS': { city: '札幌 Sapporo' }, 'KMJ': { city: '熊本 Kumamoto' }, 'FUK': { city: '福岡 Fukuoka' },
                 'PEK': { city: '北京首都 Beijing' }, 'PVG': { city: '上海浦東 Shanghai' }, 'SHA': { city: '上海虹橋 Shanghai' },
-                'SZX': { coords: [113.8115, 22.6393], city: '深圳 Shenzhen' }, 
-                'XIY': { city: "西安 Xi'an" }, 
-                'SIN': { city: '新加坡 Singapore' }, 'BKK': { city: '曼谷 Bangkok' }, 'HKG': { city: '香港 Hong Kong' },
+                'HGH': { city: '杭州 Hangzhou' }, 'TFU': { city: '成都天府 Chengdu' }, 'XIY': { city: '西安 Xi an' },
+                'SZX': { coords: [113.8115, 22.6393], city: '深圳 Shenzhen' }, 'LJG': { coords: [100.2464, 26.6714], city: '麗江 Lijiang' },
+                'SIN': { city: '新加坡 Singapore' }, 'HKT': { city: '普吉島 Phuket' }, 'PEN': { city: '檳城 Penang' },
+                'BKK': { city: '曼谷 Bangkok' }, 'DMK': { city: '曼谷廊曼 Bangkok' }, 'KUL': { city: '吉隆坡 Kuala Lumpur' },
+                'CGK': { city: '雅加達 Jakarta' }, 'MNL': { city: '馬尼拉 Manila' }, 'HKG': { city: '香港 Hong Kong' },
                 'MFM': { city: '澳門 Macau' }, 'ICN': { city: '首爾 Seoul' }, 'GMP': { city: '首爾 Seoul' },
-                'LGW': { city: '倫敦 London' }, 'FCO': { city: '羅馬 Rome' }, 'IST': { city: '伊斯坦堡 Istanbul' }, 
-                'DXB': { city: '杜拜 Dubai' }, 'JFK': { city: '紐約 New York' }, 'LAX': { city: '洛杉磯 Los Angeles' } 
+                'LGW': { city: '倫敦 London' }, 'FCO': { city: '羅馬 Rome' }, 'BCN': { city: '巴塞羅那 Barcelona' },
+                'IST': { city: '伊斯坦堡 Istanbul' }, 'CAI': { city: '開羅 Cairo' }, 'DXB': { city: '杜拜 Dubai' },
+                'ABU': { city: '阿布達比 Abu Dhabi' }, 'DOH': { city: '杜哈 Doha' },
+                'JFK': { city: '紐約 New York' }, 'LAX': { city: '洛杉磯 Los Angeles' }, 'LAS': { city: '拉斯維加斯 Las Vegas' },
+                'IAD': { city: '華盛頓 Washington' }, 'SFO': { city: '舊金山 San Francisco' }, 'DEL': { city: '新德里 New Delhi' },
+                'CMB': { city: '科倫坡 Colombo' } 
             };
 
             data.forEach(a => { 
