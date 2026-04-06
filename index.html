@@ -88,13 +88,13 @@
         <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-[#2a1b54] to-transparent opacity-50 pointer-events-none"></div>
 
         <div class="relative z-10 flex justify-between items-center mb-10">
-            <h2 class="text-3xl font-black tracking-tighter">My Flighty Passport</h2>
+            <h2 class="text-3xl font-black tracking-tighter">我的飛行護照</h2>
             <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">&times;</button>
         </div>
 
         <div class="relative z-10 grid grid-cols-2 gap-8 mb-12">
             <div>
-                <div class="text-sm text-gray-400 font-bold mb-1">Flight Distance</div>
+                <div class="text-sm text-gray-400 font-bold mb-1">總飛行距離</div>
                 <div class="text-6xl font-light tracking-tighter mb-4"><span id="pp-dist">0</span> <span class="text-2xl text-gray-500">km</span></div>
                 
                 <div class="space-y-3">
@@ -103,44 +103,44 @@
                         <div class="w-full bg-black/50 h-2 rounded-full overflow-hidden">
                             <div id="pp-earth-bar" class="bg-[#7e57c2] h-full bar-fill" style="width: 0%"></div>
                         </div>
-                        <div class="text-sm font-bold whitespace-nowrap"><span id="pp-earth">0</span>x <span class="text-gray-400 text-xs">Earth</span></div>
+                        <div class="text-sm font-bold whitespace-nowrap"><span id="pp-earth">0</span>x <span class="text-gray-400 text-xs">地球</span></div>
                     </div>
                     <div class="flex items-center gap-3 bg-white/5 p-3 rounded-2xl">
                         <div class="text-xl">🌕</div>
                         <div class="w-full bg-black/50 h-2 rounded-full overflow-hidden">
                             <div id="pp-moon-bar" class="bg-gray-400 h-full bar-fill" style="width: 0%"></div>
                         </div>
-                        <div class="text-sm font-bold whitespace-nowrap"><span id="pp-moon">0</span>x <span class="text-gray-400 text-xs">Moon</span></div>
+                        <div class="text-sm font-bold whitespace-nowrap"><span id="pp-moon">0</span>x <span class="text-gray-400 text-xs">月球</span></div>
                     </div>
                 </div>
             </div>
             
             <div class="flex flex-col justify-between">
                 <div>
-                    <div class="text-sm text-gray-400 font-bold mb-1">Flight Time</div>
+                    <div class="text-sm text-gray-400 font-bold mb-1">飛行總時長</div>
                     <div class="text-5xl font-light tracking-tighter" id="pp-time-main">0<span class="text-2xl text-gray-500">h</span> 0<span class="text-2xl text-gray-500">m</span></div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mt-6">
                     <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center">
-                        <div class="text-[10px] text-gray-400 uppercase">Days in air</div>
+                        <div class="text-[10px] text-gray-400 uppercase">滯空天數</div>
                         <div class="text-xl font-bold leading-none mt-1" id="pp-days">0</div>
                     </div>
                     <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center">
-                        <div class="text-[10px] text-gray-400 uppercase">Avg Flight</div>
+                        <div class="text-[10px] text-gray-400 uppercase">平均航程</div>
                         <div class="text-xl font-bold leading-none mt-1" id="pp-avg-time">0h</div>
                     </div>
                     <div class="bg-white/5 p-3 rounded-xl border border-[#5e35b1]/30 flex flex-col justify-center">
-                        <div class="text-[10px] text-gray-400 uppercase">In Air</div>
+                        <div class="text-[10px] text-gray-400 uppercase">滯空時間</div>
                         <div class="text-xl font-bold leading-none mt-1" id="pp-in-air">0h</div>
                     </div>
                     <div class="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-between">
-                        <div class="text-[10px] text-gray-400 uppercase">Total Flights</div>
+                        <div class="text-[10px] text-gray-400 uppercase">總航班數</div>
                         <div class="flex justify-between items-end mt-1">
                             <span class="text-2xl font-bold leading-none" id="pp-total-flights-box">0</span>
                             <div class="text-[9px] text-gray-500 text-right leading-tight">
-                                Dom <span id="pp-dom" class="font-bold text-gray-300">0</span><br>
-                                Int <span id="pp-int" class="font-bold text-sky-400">0</span><br>
-                                Lng <span id="pp-long" class="font-bold text-[#facc15]">0</span>
+                                國內 <span id="pp-dom" class="font-bold text-gray-300">0</span><br>
+                                國際 <span id="pp-int" class="font-bold text-sky-400">0</span><br>
+                                長程 <span id="pp-long" class="font-bold text-[#facc15]">0</span>
                             </div>
                         </div>
                     </div>
@@ -150,23 +150,23 @@
 
         <div class="relative z-10 grid grid-cols-2 gap-6 mb-12">
             <div class="bg-white/5 p-5 rounded-3xl">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-3">Yearly Distance Trend</div>
+                <div class="text-xs text-gray-400 uppercase font-bold mb-3">年度飛行距離趨勢</div>
                 <canvas id="chart-yearly" class="w-full h-32"></canvas>
             </div>
             <div class="bg-white/5 p-5 rounded-3xl">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-3">Monthly Flights Heat</div>
+                <div class="text-xs text-gray-400 uppercase font-bold mb-3">月度航班熱力分布</div>
                 <canvas id="chart-monthly" class="w-full h-32"></canvas>
             </div>
         </div>
 
         <div class="relative z-10 grid grid-cols-2 gap-6 mb-12">
             <div class="bg-white/5 p-5 rounded-3xl">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-3">Shortest Flight</div>
+                <div class="text-xs text-gray-400 uppercase font-bold mb-3">最短航線</div>
                 <div class="text-xl font-bold tracking-tight mb-1" id="pp-short-route">--</div>
                 <div class="text-sky-400 font-bold" id="pp-short-dist">0 km</div>
             </div>
             <div class="bg-white/5 p-5 rounded-3xl">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-3">Longest Flight</div>
+                <div class="text-xs text-gray-400 uppercase font-bold mb-3">最長航線</div>
                 <div class="text-xl font-bold tracking-tight mb-1" id="pp-long-route">--</div>
                 <div class="text-[#facc15] font-bold" id="pp-long-dist">0 km</div>
             </div>
@@ -174,10 +174,10 @@
 
         <div class="relative z-10 grid grid-cols-2 gap-6 mb-12">
             <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">Class</div>
+                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">艙等分布</div>
                 <div id="chart-class" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);">
                     <div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center">
-                        <span class="text-[10px] text-gray-400">Top Class</span>
+                        <span class="text-[10px] text-gray-400">最常搭乘</span>
                         <span class="font-bold text-sm leading-tight px-2" id="top-class-name">--</span>
                     </div>
                 </div>
@@ -185,16 +185,16 @@
             </div>
             
             <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">Seat Position</div>
+                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">座位位置</div>
                 <div id="chart-seat" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);">
                     <div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center">
-                        <span class="text-[10px] text-gray-400">Top Seat</span>
+                        <span class="text-[10px] text-gray-400">最常劃位</span>
                         <span class="font-bold text-sm" id="top-seat-name">--</span>
                     </div>
                 </div>
                 <div id="legend-seat" class="w-full space-y-1 text-xs"></div>
                 <div class="mt-4 pt-3 border-t border-white/10 w-full flex justify-between items-center text-xs">
-                    <span class="text-gray-400">Exit Row</span><span class="font-bold text-[#facc15]" id="stat-exit-row">0</span>
+                    <span class="text-gray-400">逃生門座位</span><span class="font-bold text-[#facc15]" id="stat-exit-row">0</span>
                 </div>
             </div>
         </div>
@@ -203,28 +203,28 @@
             <div>
                 <div class="flex items-baseline gap-2 mb-4">
                     <div class="text-3xl font-black" id="pp-total-aircraft">0</div>
-                    <div class="text-gray-400 font-bold">Top Aircraft Types</div>
+                    <div class="text-gray-400 font-bold">最常搭乘機型</div>
                 </div>
                 <div id="list-aircraft" class="space-y-3"></div>
             </div>
             <div>
                 <div class="flex items-baseline gap-2 mb-4">
                     <div class="text-3xl font-black" id="pp-total-airports">0</div>
-                    <div class="text-gray-400 font-bold">Total Airports</div>
+                    <div class="text-gray-400 font-bold">造訪機場</div>
                 </div>
                 <div id="list-airports" class="space-y-3"></div>
             </div>
             <div>
                 <div class="flex items-baseline gap-2 mb-4">
                     <div class="text-3xl font-black" id="pp-total-airlines">0</div>
-                    <div class="text-gray-400 font-bold">Total Airlines</div>
+                    <div class="text-gray-400 font-bold">搭乘航空公司</div>
                 </div>
                 <div id="list-airlines" class="space-y-3"></div>
             </div>
             <div>
                 <div class="flex items-baseline gap-2 mb-4">
                     <div class="text-3xl font-black" id="pp-total-routes">0</div>
-                    <div class="text-gray-400 font-bold">Total Airports (Routes)</div>
+                    <div class="text-gray-400 font-bold">造訪航線</div>
                 </div>
                 <div id="list-routes" class="space-y-3"></div>
             </div>
@@ -306,6 +306,46 @@
     let currentFlights = []; 
     let editingFlightId = null;
     let currentYearFilter = 'ALL';
+   // 🔥 全球航司中英雙語字典庫 (Ultimate Edition)
+    const airlineDB = {
+        // === 台灣 Taiwan ===
+        'BR': '長榮 EVA Air', 'CI': '華航 China Airlines', 'JX': '星宇 STARLUX', 
+        'IT': '台灣虎航 Tigerair Taiwan', 'AE': '華信 Mandarin', 'B7': '立榮 UNI Air',
+
+        // === 日本 Japan ===
+        'JL': '日航 Japan Airlines', 'NH': '全日空 ANA', 
+        'MM': '樂桃 Peach', 'GK': '捷星日本 Jetstar Japan', 'BC': '天馬 Skymark', 'ZG': 'ZIPAIR',
+
+        // === 韓國 South Korea ===
+        'KE': '大韓 Korean Air', 'OZ': '韓亞 Asiana', 
+        '7C': '濟州 Jeju Air', 'TW': '德威 T\'way', 'LJ': '真航空 Jin Air', 'BX': '釜山 Air Busan',
+
+        // === 港澳與中國 HK/Macau/China ===
+        'CX': '國泰 Cathay Pacific', 'UO': '香港快運 HK Express', 'HX': '香港航空 Hong Kong Airlines', 
+        'NX': '澳門航空 Air Macau', 'CA': '國航 Air China', 'MU': '東航 China Eastern', 
+        'CZ': '南航 China Southern', 'MF': '廈航 XiamenAir', '9C': '春秋 Spring Airlines',
+
+        // === 東南亞 Southeast Asia ===
+        'SQ': '新航 Singapore Airlines', 'TR': '酷航 Scoot', '3K': '捷星亞洲 Jetstar Asia',
+        'MH': '馬航 Malaysia Airlines', 'AK': '亞航 AirAsia', 'D7': '全亞航 AirAsia X',
+        'TG': '泰航 Thai Airways', 'FD': '泰亞航 Thai AirAsia', 'VZ': '泰越捷 Thai Vietjet',
+        'VN': '越航 Vietnam Airlines', 'VJ': '越捷 VietJet', 
+        'PR': '菲航 Philippine Airlines', '5J': '宿霧太平洋 Cebu Pacific', 
+        'GA': '印尼鷹航 Garuda Indonesia', 'JT': '獅航 Lion Air',
+
+        // === 北美洲 North America (含四大航與主要廉航) ===
+        'AA': '美國航空 American Airlines', 'DL': '達美 Delta', 'UA': '聯合 United Airlines', 
+        'WN': '西南 Southwest Airlines', 'AS': '阿拉斯加 Alaska Airlines', 'B6': '捷藍 JetBlue',
+        'NK': '精神 Spirit Airlines', 'F9': '邊疆 Frontier Airlines', 'AC': '加航 Air Canada',
+
+        // === 歐洲 Europe (傳統與LCC巨頭) ===
+        'BA': '英航 British Airways', 'LH': '德航 Lufthansa', 'AF': '法航 Air France', 
+        'KL': '荷航 KLM', 'LX': '瑞航 SWISS', 'AY': '芬航 Finnair', 'TK': '土航 Turkish Airlines',
+        'U2': '易捷 easyJet', 'FR': '瑞安 Ryanair', 'W6': '威茲 Wizz Air', 'VY': '伏林 Vueling',
+
+        // === 中東 Middle East (巨頭三加一) ===
+        'EK': '阿聯酋 Emirates', 'QR': '卡達 Qatar Airways', 'EY': '阿提哈德 Etihad Airways'
+    };
 
     // 🔥 航班號自動拆解引擎 (輸入 BR87 自動拆成 BR 與 87)
    // 🔥 升級版：智慧航班號拆解引擎 (支援雙向輸入防呆)
@@ -475,7 +515,7 @@
                 
                
                 let rank = timelineFlights.indexOf(f);
-                let takeoffDelay = rank * 14000; // 
+                let takeoffDelay = rank * 2000; // 
                 
                 drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
@@ -572,23 +612,34 @@
         renderDonut(seatStats.type, typeColors, seatStats.validTypes, 'chart-seat', 'legend-seat', 'top-seat-name');
         document.getElementById('stat-exit-row').innerText = seatStats.exitRows;
 
-        const renderList = (dataObj, containerId, colorClass, showLogo = false) => {
+       // 🔥 雙語升級版列表渲染引擎
+        const renderList = (dataObj, containerId, colorClass, listType = 'normal') => {
             const sorted = Object.entries(dataObj).sort((a,b) => b[1]-a[1]);
             const container = document.getElementById(containerId);
             const maxVal = sorted.length ? sorted[0][1] : 1;
             
             container.innerHTML = sorted.slice(0, 10).map(item => {
                 const name = item[0], count = item[1];
-                const widthPercent = (count/maxVal)*100;
+                let displayName = name;
                 let logoDisplay = '';
-                if(showLogo) {
+
+                // 航空公司專屬處理 (抓取 Logo 與雙語字典)
+                if(listType === 'airline') {
                     const logoUrl = getAirlineLogoUrl(name);
                     logoDisplay = logoUrl ? `<img src="${logoUrl}" alt="${name}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-1 mr-3 shrink-0">` : '';
+                    displayName = airlineDB[name] ? `${name} ${airlineDB[name]}` : name;
                 }
+                
+                // 機場專屬處理 (IATA + 城市名稱/自訂雙語名稱)
+                if(listType === 'airport' && airportDB[name]) {
+                    displayName = `${name} ${airportDB[name].city}`;
+                }
+
+                const widthPercent = (count/maxVal)*100;
                 return `
                     <div class="flex items-center text-sm">
                         ${logoDisplay}
-                        <div class="w-32 sm:w-40 font-bold truncate pr-2 flex-shrink-0">${name}</div>
+                        <div class="w-40 sm:w-48 font-bold truncate pr-2 flex-shrink-0">${displayName}</div>
                         <div class="flex-1 flex items-center min-w-0">
                             <div class="${colorClass} h-6 rounded-r-md bar-fill flex items-center px-2 text-white font-bold text-xs" style="width: ${widthPercent}%">${count}</div>
                         </div>
@@ -597,10 +648,11 @@
             return sorted.length;
         };
 
-        document.getElementById('pp-total-aircraft').innerText = renderList(freq.aircrafts, 'list-aircraft', 'bg-emerald-600');
-        document.getElementById('pp-total-routes').innerText = renderList(freq.routes, 'list-routes', 'bg-[#5e35b1]');
-        document.getElementById('pp-total-airports').innerText = renderList(freq.airports, 'list-airports', 'bg-[#7e57c2]');
-        document.getElementById('pp-total-airlines').innerText = renderList(freq.airlines, 'list-airlines', 'bg-sky-600', true);
+        // 綁定對應的顯示類型
+        document.getElementById('pp-total-aircraft').innerText = renderList(freq.aircrafts, 'list-aircraft', 'bg-emerald-600', 'normal');
+        document.getElementById('pp-total-routes').innerText = renderList(freq.routes, 'list-routes', 'bg-[#5e35b1]', 'normal');
+        document.getElementById('pp-total-airports').innerText = renderList(freq.airports, 'list-airports', 'bg-[#7e57c2]', 'airport');
+        document.getElementById('pp-total-airlines').innerText = renderList(freq.airlines, 'list-airlines', 'bg-sky-600', 'airline');
 
         // 🔥 機場熱力點與點擊 Popup 引擎
         let airportFeatures = [];
