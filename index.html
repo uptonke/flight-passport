@@ -15,11 +15,7 @@
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         
         .glass-panel { background: rgba(20, 20, 22, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .flighty-panel { 
-    background: #0f0f13; 
-    max-height: 85vh; /* 🚀 設定護照面板的最大高度，為邊距留出空間 */
-    overflow-y: auto; /* 🚀 當內容超出最大高度時，啟用垂直滾動條 */
-}
+        .flighty-panel { background: #0f0f13; }
         
         .mapboxgl-ctrl-logo, .mapboxgl-ctrl-bottom-right { display: none !important; }
         ::-webkit-scrollbar { width: 6px; }
@@ -174,10 +170,19 @@
             <button onclick="toggleModal('addFlightModal')" class="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
         <form id="flightForm" class="space-y-5" onsubmit="submitFlight(event)">
-            <div class="grid grid-cols-3 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">降落 Landing</label><input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">日期 Date</label>
+                <input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label>
+                    <input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">降落 Landing</label>
+                    <input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
             </div>
             
             <div class="grid grid-cols-2 gap-4">
