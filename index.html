@@ -433,6 +433,15 @@
                 routeFreq[r] = (routeFreq[r] || 0) + 1;
             }
         });
+// ... (上面是 filteredFlights 的 filter 邏輯) ...
+
+        // 🔥 絕對時間軸排序 (嚴格計算每一趟航班的起飛排名)
+        const timelineFlights = [...filteredFlights].sort((a, b) => {
+            let dateA = a.flight_date ? new Date(a.flight_date).getTime() : 0;
+            let dateB = b.flight_date ? new Date(b.flight_date).getTime() : 0;
+            if (dateA === dateB) return a.id - b.id; // 如果在同一天飛，就用建檔順序當作 tie-breaker
+            return dateA - dateB; // 確保舊的排在最前面 (Ascending)
+        });
 
         filteredFlights.forEach((f, i) => {
             const orig = airportDB[f.origin_code], dest = airportDB[f.dest_code];
@@ -464,7 +473,8 @@
                     </div>`;
 
                 // 🔥 新增：計算起飛時間差 (最舊的航班 delay=0，越新的越晚起飛，每架間隔 800 毫秒)
-                let takeoffDelay = (filteredFlights.length - 1 - i) * 800; 
+               let rank = timelineFlights.findIndex(tf => tf.id === f.id);
+                let takeoffDelay = rank * 800; // rank 越小(越舊)就越早起飛，每架間距 800 毫秒
                 drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
 
                 if(f.status && f.status.includes('完成')) {
