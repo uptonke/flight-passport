@@ -23,7 +23,6 @@
         
         .bar-fill { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
         
-        /* 讓 Popup 的設計符合暗黑 Vibe */
         .mapboxgl-popup-content { background: rgba(30, 30, 34, 0.95); backdrop-filter: blur(10px); color: white; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); padding: 12px; }
         .mapboxgl-popup-tip { border-top-color: rgba(30, 30, 34, 0.95) !important; }
     </style>
@@ -47,7 +46,6 @@
     <div class="flex justify-between items-center border-b border-white/10 pb-3 md:pb-4 shrink-0 cursor-pointer md:cursor-default" onclick="toggleDashboard()">
         <div><div class="text-[10px] text-gray-400 uppercase font-bold">Passenger</div><div class="text-base md:text-lg font-bold">KE WEIXU</div></div>
         <div class="flex items-center gap-3">
-            <div class="text-right"><div class="text-[10px] text-gray-400 uppercase font-bold">Status</div><div class="text-sm font-bold text-sky-400">EXPLORER</div></div>
             <div id="dash-toggle-icon" class="md:hidden text-gray-400 bg-white/10 rounded-full w-8 h-8 flex items-center justify-center text-xs transition-transform">🔽</div>
         </div>
     </div>
@@ -80,20 +78,6 @@
             <div class="text-xs text-gray-400 uppercase font-bold">近期日誌</div>
         </div>
         <div class="flex gap-2 overflow-x-auto pb-2 mb-2 shrink-0 text-xs font-bold" id="year-filters"></div>
-        <div id="flight-list" class="overflow-y-auto space-y-2 pr-1 flex-1 pb-2"></div>
-    </div>
-</div>
-
-    <button onclick="toggleModal('passportModal')" class="w-full bg-[#5e35b1] hover:bg-[#673ab7] text-white font-bold py-3 rounded-xl mb-4 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-[0_0_15px_rgba(94,53,177,0.5)]">
-        打開 Flighty Passport
-    </button>
-
-    <div class="flex-1 overflow-hidden flex flex-col">
-        <div class="flex items-center justify-between mb-2 shrink-0">
-            <div class="text-xs text-gray-400 uppercase font-bold">近期日誌</div>
-        </div>
-        <div class="flex gap-2 overflow-x-auto pb-2 mb-2 shrink-0 text-xs font-bold" id="year-filters">
-        </div>
         <div id="flight-list" class="overflow-y-auto space-y-2 pr-1 flex-1 pb-2"></div>
     </div>
 </div>
@@ -323,7 +307,6 @@
     let editingFlightId = null;
     let currentYearFilter = 'ALL';
 
-    // 🔥 全球航司中英雙語字典庫 (Ultimate Edition)
     const airlineDB = {
         'BR': '長榮航空 EVA Air', 'CI': '中華航空 China Airlines', 'JX': '星宇航空 STARLUX', 
         'IT': '台灣虎航 Tigerair Taiwan', 'AE': '華信航空 Mandarin', 'B7': '立榮航空 UNI Air',
@@ -374,11 +357,12 @@
         return `https://images.kiwi.com/airlines/64/${iataCode.toUpperCase()}.png`;
     }
 
+    // 🚨 顏色修改：將 #000000 改為 #ffffff
     function getRouteColor(count) {
         if(count === 1) return '#facc15';
         if(count === 2) return '#3b82f6';
         if(count === 3) return '#22c55e';
-        if(count === 4) return '#000000';
+        if(count === 4) return '#ffffff'; // 原本是 #000000
         if(count === 5) return '#ef4444';
         if(count === 6) return '#f97316';
         return '#ffffff';
@@ -428,7 +412,9 @@
     mapboxgl.accessToken = MAPBOX_TOKEN;
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
-    map.on('style.load', () => map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.5 }));
+    
+    // 🚨 加入星空效果：調整 star-intensity 到 0.8，讓背景星星更亮
+    map.on('style.load', () => map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 }));
 
     function filterByYear(year) {
         currentYearFilter = year;
@@ -438,10 +424,39 @@
         renderMapAndData();
     }
 
+    // 🚨 運鏡與加粗引擎：點擊左邊清單時呼叫此函數
+    function focusFlightRoute(routeId, origin, dest) {
+        // 先把所有圖層的寬度重置為 3
+        if (map.getStyle()) {
+            map.getStyle().layers.forEach(l => { 
+                if (l.id.startsWith('r-') && l.id.endsWith('-line')) {
+                    map.setPaintProperty(l.id, 'line-width', 3);
+                    map.setPaintProperty(l.id, 'line-opacity', 0.85); // 恢復預設透明度
+                }
+            });
+        }
+        
+        // 針對點擊的那條航線加粗到 6，並提高透明度到 1 (不透明)
+        if (map.getLayer(`${routeId}-line`)) {
+            map.setPaintProperty(`${routeId}-line`, 'line-width', 6);
+            map.setPaintProperty(`${routeId}-line`, 'line-opacity', 1);
+        }
+
+        // 計算中心點並飛過去
+        const o = airportDB[origin], d = airportDB[dest];
+        if(!o || !d) return;
+        const midPoint = turf.midpoint(turf.point(o.coords), turf.point(d.coords)).geometry.coordinates;
+
+        map.flyTo({
+            center: midPoint,
+            zoom: 4,
+            duration: 1500
+        });
+    }
+
     function renderMapAndData() {
         document.getElementById('flight-list').innerHTML = '';
         
-        // 🚀 退回原版：清除 r- 開頭的多圖層與資料源
         if (map.getStyle()) {
             map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-')) map.removeLayer(l.id); });
             Object.keys(map.getStyle().sources).forEach(s => { if (s.startsWith('r-')) map.removeSource(s); });
@@ -478,7 +493,6 @@
         filteredFlights.forEach((f, i) => {
             const orig = airportDB[f.origin_code], dest = airportDB[f.dest_code];
             if(orig && dest) {
-                // 距離快取機制保留，幫助省效能
                 f.distance ||= turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
                 const dist = f.distance;
                 
@@ -491,8 +505,9 @@
                 const airlineDisplay = f.airline ? (logoUrl ? `<img src="${logoUrl}" alt="${f.airline}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
                 const dateBadge = f.flight_date ? `<span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date.substring(0,4)}</span>` : '';
 
+                // 🚨 將 onclick 事件綁定到整列，觸發 focusFlightRoute
                 document.getElementById('flight-list').innerHTML += `
-                    <div class="bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 group">
+                    <div class="bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 group cursor-pointer hover:bg-white/10 transition-colors" onclick="focusFlightRoute('r-${i}', '${f.origin_code}', '${f.dest_code}')">
                         ${airlineDisplay} 
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-center mb-0.5">
@@ -500,15 +515,14 @@
                                 <div class="flex items-center gap-1 shrink-0 ml-2">
                                     ${dateBadge}
                                     <span class="text-[10px] font-bold border border-current px-2 py-0.5 rounded-full" style="color: ${routeColor}">${f.status||'已完成'}</span>
-                                    <button onclick="editFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">✏️</button>
-                                    <button onclick="deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
+                                    <button onclick="event.stopPropagation(); editFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">✏️</button>
+                                    <button onclick="event.stopPropagation(); deleteFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
                                 </div>
                             </div>
                             <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(dist)}km</div>
                         </div>
                     </div>`;
 
-                // 🚀 退回原版：使用獨立航班的動畫觸發機制
                 let rank = timelineFlights.indexOf(f);
                 let takeoffDelay = rank * 2000; 
                 drawAnimatedRoute(orig.coords, dest.coords, `r-${i}`, freqCount, f.status, takeoffDelay);
@@ -542,7 +556,6 @@
             }
         });
 
-        // Dashboard UI 更新區
         document.getElementById('stat-dist').innerText = Math.round(totalKm).toLocaleString();
         document.getElementById('stat-flights').innerText = completedFlights;
         if(completedFlights > 0) {
@@ -765,7 +778,6 @@
         else { location.reload(); }
     }
 
-    // 🚀 退回原版：DOM 飛機與獨立畫線引擎
     function drawAnimatedRoute(origin, destination, routeId, freqCount, status, delay = 0) {
         let lineColor = (status && status.includes('計畫')) ? '#6b7280' : getRouteColor(freqCount);
         const route = turf.greatCircle(origin, destination);
@@ -776,7 +788,6 @@
 
         map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [arcCoordinates[0], arcCoordinates[0]] } } });
         
-        // 🌟 修改重點：將 'line-opacity' 提高到 0.85 讓顏色變得扎實飽滿
         map.addLayer({ 
             'id': `${routeId}-line`, 
             'type': 'line', 
@@ -785,12 +796,11 @@
             'paint': { 'line-color': lineColor, 'line-width': 3, 'line-opacity': 0.85 } 
         });
 
-        // 🔥 動態飛機 Marker
         const elContainer = document.createElement('div');
         const planeIcon = document.createElement('div');
         planeIcon.innerHTML = '✈️';
         planeIcon.style.fontSize = '18px';
-        planeIcon.style.transition = 'transform 0.1s linear'; // 讓旋轉更滑順
+        planeIcon.style.transition = 'transform 0.1s linear';
         elContainer.appendChild(planeIcon);
         
         const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(arcCoordinates[0]).addTo(map);
@@ -803,13 +813,11 @@
                     map.getSource(routeId).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': currentCoords } } ] });
                 }
                 
-                // 計算旋轉角度
                 const p1 = arcCoordinates[animCounter - 1];
                 const p2 = arcCoordinates[animCounter];
                 const bearing = turf.bearing(p1, p2);
                 planeMarker.setLngLat(p2);
                 
-                // 🚨 關鍵修復：只旋轉內部的 planeIcon，不碰外層的 Mapbox 定位容器
                 planeIcon.style.transform = `rotate(${bearing - 45}deg)`; 
 
                 animCounter++;
@@ -819,12 +827,10 @@
             }
         }
         
-        // 套用我們傳進來的時間軸
         setTimeout(() => animate(), delay + 1300); 
     }
-    // 📱 手機版 Dashboard 折疊控制引擎
+
     function toggleDashboard() {
-        // 如果螢幕寬度大於 768px (電腦版)，直接 Return 禁用折疊功能
         if (window.innerWidth >= 768) return; 
         
         const content = document.getElementById('dash-content');
@@ -837,7 +843,7 @@
         } else {
             content.classList.add('opacity-0', 'h-0', 'mt-0');
             icon.style.transform = 'rotate(180deg)';
-            setTimeout(() => content.classList.add('hidden'), 500); // 等動畫跑完再隱藏
+            setTimeout(() => content.classList.add('hidden'), 500); 
         }
     }
 </script>
