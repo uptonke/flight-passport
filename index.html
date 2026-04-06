@@ -349,17 +349,38 @@
     }
 
     // 🔥 加入中文名稱與 datalist 支援
+   // 🔥 加入中文名稱與 datalist 支援 (包含修正地圖標點的「強制覆寫引擎」)
     async function loadGlobalAirports() {
         try {
             const response = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
             const data = await response.json();
             let options = '';
+            
+            // 🚨 Data Override (Dirty Data 修正區)
+            // 格式：'IATA代碼': { coords: [經度 Lon, 緯度 Lat], name: '機場名', city: '城市', country: '國家' }
+            // 未來如果還有其他機場畫錯或找不到，直接用 Google Maps 查出經緯度加在這裡！
+            const manualOverrides = {
+                'SZX': { coords: [113.8115, 22.6393], name: 'Shenzhen Bao\'an', city: 'Shenzhen', country: 'China' },
+                'LJG': { coords: [100.2464, 26.6714], name: 'Lijiang Sanyi', city: 'Lijiang', country: 'China' }
+            };
+
             data.forEach(a => { 
                 if (a.code) {
-                    airportDB[a.code.toUpperCase()] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
-                    options += `<option value="${a.code.toUpperCase()}">${a.name} (${a.city})</option>`;
+                    let code = a.code.toUpperCase();
+                    // 把 API 的資料寫進去 (前提是我們沒有要手動覆寫它)
+                    if (!manualOverrides[code]) {
+                        airportDB[code] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
+                        options += `<option value="${code}">${a.name} (${a.city})</option>`;
+                    }
                 }
             });
+
+            // 把我們手動校正的「乾淨資料」強制蓋進本地資料庫裡
+            for (let [code, info] of Object.entries(manualOverrides)) {
+                airportDB[code] = info;
+                options += `<option value="${code}">${info.name} (${info.city})</option>`;
+            }
+
             document.getElementById('iata-list').innerHTML = options;
         } catch (e) { console.error('字典載入失敗', e); }
     }
