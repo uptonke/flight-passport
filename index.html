@@ -10,7 +10,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -34,21 +33,8 @@
             <div class="text-xl font-black flex items-center gap-2" id="db-status">載入引擎...</div>
         </div>
         <div class="h-8 w-px bg-white/20 mx-2"></div>
-        <div class="glass-panel px-6 py-4 rounded-2xl pointer-events-auto flex items-center gap-4">
-        <div>
-            <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">系統狀態 System</div>
-            <div class="text-xl font-black flex items-center gap-2" id="db-status">載入引擎...</div>
-        </div>
-        <div class="h-8 w-px bg-white/20 mx-2"></div>
-        
+        <button onclick="toggleNightMode()" id="btn-night-toggle" class="text-xs font-bold text-yellow-400 hover:text-white transition-colors">切換夜景燈光</button>
         <button onclick="toggleProjection()" id="btn-projection-toggle" class="text-xs font-bold text-sky-400 hover:text-white transition-colors">切換平面 2D</button>
-        
-        <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">匯出 CSV</button>
-        <label class="text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer">
-            匯入 CSV
-            <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="importCSV(event)">
-        </label>
-    </div>
         <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">匯出 CSV</button>
         <label class="text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer">
             匯入 CSV
@@ -59,7 +45,6 @@
         <span class="text-xl font-black text-sky-400">+ 新增 Add Flight</span>
     </button>
 </div>
-
 <div id="main-dashboard" class="absolute bottom-4 right-4 left-4 md:left-auto md:right-8 md:bottom-8 glass-panel p-5 md:p-6 rounded-3xl z-10 md:w-80 shadow-2xl flex flex-col max-h-[65vh] md:max-h-[85vh] opacity-0 translate-y-10 transition-all duration-500">
     <div class="flex justify-between items-center border-b border-white/10 pb-3 md:pb-4 shrink-0 cursor-pointer md:cursor-default" onclick="toggleDashboard()">
         <div><div class="text-base md:text-lg font-black tracking-widest">FLIGHT DASHBOARD</div></div>
@@ -579,7 +564,19 @@ if (seatEntries.length > 0) {
             pitch: isGlobe ? 45 : 0, 
             duration: 1200 
         });
+        // 🔥 地貌/夜景 一鍵切換引擎
+    let isNightMode = false;
+    window.toggleNightMode = function() {
+        isNightMode = !isNightMode;
         
+        if (map.getLayer('nasa-black-marble-layer')) {
+            // 直接切換圖層的能見度
+            map.setLayoutProperty('nasa-black-marble-layer', 'visibility', isNightMode ? 'visible' : 'none');
+        }
+        
+        const btn = document.getElementById('btn-night-toggle');
+        if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
+    };
         const btn = document.getElementById('btn-projection-toggle');
         if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
     };
@@ -590,10 +587,11 @@ if (seatEntries.length > 0) {
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
 
     // 🚨 每次 Style 載入完畢後，掛上星空、NASA Black Marble 與自訂 WebGL 月球
+    // 🚨 每次 Style 載入完畢後，重新掛上 NASA 燈光網 (捨棄不相容的 WebGL 月球)
     map.on('style.load', () => {
         map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
 
-        // 1. 疊加 NASA Black Marble (夜間城市燈光) Raster 圖層
+        // 加入 NASA Black Marble，並設為「預設隱藏 (none)」
         if (!map.getSource('nasa-black-marble')) {
             map.addSource('nasa-black-marble', {
                 'type': 'raster',
@@ -606,58 +604,27 @@ if (seatEntries.length > 0) {
                 'type': 'raster',
                 'source': 'nasa-black-marble',
                 'paint': {
-                    'raster-opacity': 0.5, 
-                    'raster-contrast': 0.2
+                    'raster-opacity': 1.0, // 滿血輸出不疊加
+                    'raster-contrast': 0.1
+                },
+                'layout': {
+                    'visibility': 'none' // 👈 關鍵：預設隱藏，等玩家按按鈕
                 }
             });
         }
+        
+        const btnProj = document.getElementById('btn-projection-toggle');
+        if (btnProj) btnProj.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
 
-        // 2. 建立自訂 WebGL 3D 月球 Layer
-        const moonLocation = mapboxgl.MercatorCoordinate.fromLngLat([0, 0], 30000000);
-        const moonTransform = {
-            translateX: moonLocation.x,
-            translateY: moonLocation.y,
-            translateZ: moonLocation.z,
-            scale: moonLocation.meterInMercatorCoordinateUnits()
-        };
+        const btnNight = document.getElementById('btn-night-toggle');
+        if (btnNight) btnNight.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
+        
+        if (isAppInitialized) {
+            triggerReactRender();
+        }
+    });
 
-        const customMoonLayer = {
-            id: '3d-moon-layer',
-            type: 'custom',
-            renderingMode: '3d',
-            onAdd: function (map, gl) {
-                this.camera = new THREE.Camera();
-                this.scene = new THREE.Scene();
-
-                const geometry = new THREE.SphereGeometry(3474800, 64, 64); 
-                const textureLoader = new THREE.TextureLoader();
-                const texture = textureLoader.load('https://upload.wikimedia.org/wikipedia/commons/d/db/Moonmap_from_clementine_data.png');
-                const material = new THREE.MeshBasicMaterial({ map: texture });
-                
-                this.moon = new THREE.Mesh(geometry, material);
-                this.scene.add(this.moon);
-
-                this.map = map;
-                this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
-                this.renderer.autoClear = false;
-            },
-            render: function (gl, matrix) {
-                this.moon.rotation.y += 0.002; 
-
-                const rotationX = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
-                const m = new THREE.Matrix4().fromArray(matrix);
-                const l = new THREE.Matrix4().makeTranslation(moonTransform.translateX, moonTransform.translateY, moonTransform.translateZ)
-                    .scale(new THREE.Vector3(moonTransform.scale, -moonTransform.scale, moonTransform.scale))
-                    .multiply(rotationX);
-
-                this.camera.projectionMatrix = m.multiply(l);
-                this.renderer.resetState();
-                this.renderer.render(this.scene, this.camera);
-                
-                this.map.triggerRepaint(); 
-            }
-        };
-
+       
         if (!map.getLayer('3d-moon-layer')) {
             map.addLayer(customMoonLayer);
         }
@@ -669,16 +636,7 @@ if (seatEntries.length > 0) {
             triggerReactRender();
         }
     }); // 👈 就是這個結尾的 }); 被吃掉了，現在補回來了！
-
-    // 🔥 2D/3D 地圖投影切換引擎
-    window.toggleProjection = function() {
-        isGlobe = !isGlobe;
-        map.setProjection({ name: isGlobe ? 'globe' : 'equirectangular' });
-        map.flyTo({ pitch: isGlobe ? 45 : 0, duration: 1200 });
-        const btn = document.getElementById('btn-projection-toggle');
-        if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
-    };
-    
+      
     function renderMapFeatures(stats) {
         // --- 1. Airports ---
         let airFeats = [];
