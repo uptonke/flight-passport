@@ -65,11 +65,15 @@
 </div>
 
 <div id="passportModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex justify-center p-4 overflow-y-auto">
-    <div class="flighty-panel modal-panel p-6 sm:p-10 rounded-[40px] w-full max-w-3xl shadow-2xl my-auto relative border border-white/10 opacity-0 scale-90">
+    <div class="flighty-panel modal-panel p-6 sm:p-10 rounded-[40px] w-full max-w-5xl shadow-2xl my-auto relative border border-white/10 opacity-0 scale-90">
+        
         <div class="relative z-10 flex justify-between items-center mb-10">
             <h2 class="text-3xl font-black tracking-tighter">我的飛行紀錄 My flight logs</h2>
             <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full">&times;</button>
         </div>
+        
+        ```
+
         <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <div>
                 <div class="text-sm text-gray-400 font-bold mb-1">總飛行距離 Total Distance</div>
@@ -121,30 +125,30 @@
             <button onclick="toggleModal('addFlightModal')" class="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
         <form id="flightForm" class="space-y-5" onsubmit="submitFlight(event)">
-            <div><label class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+            <div><label for="inp-date" class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
             <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">降落 Landing</label><input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+                <div><label for="inp-takeoff" class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+                <div><label for="inp-landing" class="block text-xs text-gray-400 mb-1">降落 Landing</label><input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">出發地 Origin</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">目的地 Dest</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
+                <div><label for="inp-origin" class="block text-xs text-gray-400 mb-1">出發地 Origin</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
+                <div><label for="inp-dest" class="block text-xs text-gray-400 mb-1">目的地 Dest</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
             </div>
             <div class="grid grid-cols-3 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">航司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">航班號 Flight No.</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">機型 Aircraft</label><input type="text" id="inp-type" class="w-full bg-white/10 rounded-lg px-3 py-2"></div>
+                <div><label for="inp-airline" class="block text-xs text-gray-400 mb-1">航司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
+                <div><label for="inp-flight-number" class="block text-xs text-gray-400 mb-1">航班號 Flight No.</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
+                <div><label for="inp-type" class="block text-xs text-gray-400 mb-1">機型 Aircraft</label><input type="text" id="inp-type" class="w-full bg-white/10 rounded-lg px-3 py-2"></div>
             </div>
             <div class="grid grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">艙等 Class</label>
+                    <label for="inp-seat-class" class="block text-xs text-gray-400 mb-1">艙等 Class</label>
                     <select id="inp-seat-class" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"><option value="">未指定 None</option><option value="Economy">經濟艙 Economy</option><option value="Premium Economy">豪華經濟艙 Premium</option><option value="Business">商務艙 Business</option><option value="First Class">頭等艙 First Class</option></select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">位置 Type</label>
+                    <label for="inp-seat-type" class="block text-xs text-gray-400 mb-1">位置 Type</label>
                     <select id="inp-seat-type" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"><option value="">未指定 None</option><option value="Window">靠窗 Window</option><option value="Middle">中間 Middle</option><option value="Aisle">走道 Aisle</option></select>
                 </div>
-                <div><label class="block text-xs text-gray-400 mb-1">座位號 Seat</label><input type="text" id="inp-seat" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
+                <div><label for="inp-seat" class="block text-xs text-gray-400 mb-1">座位號 Seat</label><input type="text" id="inp-seat" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
             </div>
             <div class="flex items-center pt-2">
                 <input type="checkbox" id="inp-exit-row" class="w-4 h-4 rounded text-sky-500 cursor-pointer">
