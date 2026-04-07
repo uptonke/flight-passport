@@ -96,19 +96,19 @@
         </div>
         <div class="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div class="bg-white/5 p-5 rounded-3xl flex flex-col justify-center items-center text-center">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-2">🔁 重複航線佔比</div>
+                <div class="text-xs text-gray-400 uppercase font-bold mb-2">🔁 舊航線重飛率</div>
                 <div class="text-3xl font-black text-white"><span id="pp-rep-route">0</span><span class="text-lg text-gray-500">%</span></div>
-                <div class="text-[10px] text-gray-500 mt-1">走過的老路線</div>
+                <div class="text-[10px] text-gray-500 mt-1">已剔除基本來回航班</div>
             </div>
             <div class="bg-white/5 p-5 rounded-3xl flex flex-col justify-center items-center text-center">
                 <div class="text-xs text-gray-400 uppercase font-bold mb-2">📈 年均飛行次數</div>
                 <div class="text-3xl font-black text-white"><span id="pp-avg-flights">0</span><span class="text-lg text-gray-500"> 趟</span></div>
-                <div class="text-[10px] text-gray-500 mt-1">Average per year</div>
+                <div class="text-[10px] text-gray-500 mt-1">每年平均起降次數</div>
             </div>
             <div class="bg-white/5 p-5 rounded-3xl flex flex-col justify-center items-center text-center border border-sky-500/30">
-                <div class="text-xs text-sky-400 uppercase font-bold mb-2">🌍 跨越時區數</div>
-                <div class="text-3xl font-black text-white"><span id="pp-timezones">0</span><span class="text-lg text-gray-500"> TZ</span></div>
-                <div class="text-[10px] text-gray-500 mt-1">Timezones crossed</div>
+                <div class="text-xs text-sky-400 uppercase font-bold mb-2">🌍 累計跨越時區</div>
+                <div class="text-3xl font-black text-white"><span id="pp-timezones">0</span><span class="text-lg text-gray-500"> 個</span></div>
+                <div class="text-[10px] text-gray-500 mt-1">總共克服的時差變化</div>
             </div>
         </div>
 
@@ -311,21 +311,18 @@
         if (!error) setFlights(data);
     }
 
-    // ==========================================
-    // 2️⃣ Calculation Layer (計算層：純粹處理邏輯)
-    // ==========================================
-    // ==========================================
+// ==========================================
     // 2️⃣ Calculation Layer (計算層：純粹處理邏輯)
     // ==========================================
     function calculateStats(flights) {
         let stats = {
             totalKm: 0, totalHours: 0, completedFlights: 0, domCount: 0, intCount: 0, longCount: 0,
             shortest: { route: '', dist: Infinity }, longest: { route: '', dist: -Infinity },
-            freq: { airports: {}, airlines: {}, routes: {}, aircrafts: {} },
+            freq: { airports: {}, airlines: {}, routes: {}, directedRoutes: {}, aircrafts: {} }, // 👈 新增 directedRoutes 紀錄單向
             airportFlightsInfo: {}, airportStats: {}, 
             seatStats: { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 },
             yearlyDist: {}, monthlyCount: new Array(12).fill(0), takeoffStats: new Array(24).fill(0), landingStats: new Array(24).fill(0),
-            timeline: [], tripsCount: 0, timezonesCrossed: 0 // 👈 新增變數
+            timeline: [], tripsCount: 0, timezonesCrossed: 0
         };
 
         const validFlights = flights.filter(f => f.origin_code && f.dest_code && airportDB[f.origin_code] && airportDB[f.dest_code]);
@@ -340,7 +337,9 @@
         stats.timeline.forEach((f, i) => {
             const orig = airportDB[f.origin_code], dest = airportDB[f.dest_code];
             f.distance ||= turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
-            const dist = f.distance, routeName = `${f.origin_code} ✈️ ${f.dest_code}`, routeKey = [f.origin_code, f.dest_code].sort().join('-');
+            const dist = f.distance, routeName = `${f.origin_code} ✈️ ${f.dest_code}`;
+            const routeKey = [f.origin_code, f.dest_code].sort().join('-'); // 無向航線 (用於右下角排行榜)
+            const directedRouteKey = `${f.origin_code}-${f.dest_code}`;     // 單向航線 (用於精算真實重複率)
             
             stats.totalKm += dist; stats.completedFlights++;
             if(f.flight_hours) stats.totalHours += parseFloat(f.flight_hours);
@@ -351,6 +350,7 @@
             
             stats.freq.airports[f.origin_code] = (stats.freq.airports[f.origin_code]||0)+1; stats.freq.airports[f.dest_code] = (stats.freq.airports[f.dest_code]||0)+1;
             stats.freq.routes[routeKey] = (stats.freq.routes[routeKey]||0)+1; 
+            stats.freq.directedRoutes[directedRouteKey] = (stats.freq.directedRoutes[directedRouteKey]||0)+1; // 紀錄單向
             if(f.airline) stats.freq.airlines[f.airline] = (stats.freq.airlines[f.airline]||0)+1;
             if(f.aircraft_type) stats.freq.aircrafts[f.aircraft_type] = (stats.freq.aircrafts[f.aircraft_type]||0)+1;
 
@@ -375,7 +375,6 @@
             const infoStr = `${f.flight_date||''} ${f.airline||''}${f.flight_number||''} ${f.origin_code}✈️${f.dest_code}`;
             stats.airportFlightsInfo[f.origin_code].push(infoStr); stats.airportFlightsInfo[f.dest_code].push(infoStr);
 
-            // 🔥 邏輯：利用出發與目的地經度差 / 15，精算出跨越的時區數
             stats.timezonesCrossed += Math.round(Math.abs(orig.coords[0] - dest.coords[0]) / 15);
 
             if (!f.routeCoords) {
@@ -390,9 +389,9 @@
             f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1); 
         });
 
-        // 🔥 邏輯：精算重複航線佔比與年均次數
-        const uniqueRoutes = Object.keys(stats.freq.routes).length;
-        stats.repeatedRoutePct = stats.completedFlights > 0 ? ((stats.completedFlights - uniqueRoutes) / stats.completedFlights * 100).toFixed(1) : 0;
+        // 🔥 利用單向航線計算，精準剔除單純的來回航班
+        const uniqueDirectedRoutes = Object.keys(stats.freq.directedRoutes).length;
+        stats.repeatedRoutePct = stats.completedFlights > 0 ? ((stats.completedFlights - uniqueDirectedRoutes) / stats.completedFlights * 100).toFixed(1) : 0;
         
         const flightYears = Object.keys(stats.yearlyDist).map(Number);
         if (flightYears.length > 0) {
