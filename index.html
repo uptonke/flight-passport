@@ -13,30 +13,24 @@
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        
         .glass-panel { background: rgba(20, 20, 22, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .flighty-panel { background: #0f0f13; }
-        
+        .flighty-panel { background: #0f0f13; max-height: 85vh; overflow-y: auto; }
         .mapboxgl-ctrl-logo, .mapboxgl-ctrl-bottom-right { display: none !important; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
-        
-        .bar-fill { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
-        
         .mapboxgl-popup-content { background: rgba(30, 30, 34, 0.95); backdrop-filter: blur(10px); color: white; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); padding: 12px; max-height: 250px; overflow-y: auto; }
         .mapboxgl-popup-tip { border-top-color: rgba(30, 30, 34, 0.95) !important; }
     </style>
 </head>
 <body class="font-sans antialiased text-white select-none">
 <datalist id="iata-list"></datalist>
-
 <div id="map"></div>
 
-<div class="absolute top-6 left-6 right-6 flex justify-between items-start z-10 pointer-events-none">
+<div id="ui-header" class="absolute top-6 left-6 right-6 flex justify-between items-start z-10 pointer-events-none opacity-0">
     <div class="glass-panel px-6 py-4 rounded-2xl pointer-events-auto flex items-center gap-4">
         <div>
             <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">系統狀態 System</div>
-            <div class="text-xl font-black flex items-center gap-2" id="db-status">Initializing...</div>
+            <div class="text-xl font-black flex items-center gap-2" id="db-status">載入引擎...</div>
         </div>
         <div class="h-8 w-px bg-white/20 mx-2"></div>
         <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">匯出 CSV</button>
@@ -50,54 +44,31 @@
     </button>
 </div>
 
-<div id="main-dashboard" class="absolute bottom-4 right-4 left-4 md:left-auto md:right-8 md:bottom-8 glass-panel p-5 md:p-6 rounded-3xl z-10 md:w-80 shadow-2xl flex flex-col max-h-[65vh] md:max-h-[85vh] transition-all duration-500">
+<div id="main-dashboard" class="absolute bottom-4 right-4 left-4 md:left-auto md:right-8 md:bottom-8 glass-panel p-5 md:p-6 rounded-3xl z-10 md:w-80 shadow-2xl flex flex-col max-h-[65vh] md:max-h-[85vh] opacity-0 translate-y-10 transition-all duration-500">
     <div class="flex justify-between items-center border-b border-white/10 pb-3 md:pb-4 shrink-0 cursor-pointer md:cursor-default" onclick="toggleDashboard()">
-        <div><div class="text-base md:text-lg font-black tracking-widest">FLIGHT DASHBOARD 飛行紀錄</div></div>
-        <div class="flex items-center gap-3">
-            <div id="dash-toggle-icon" class="md:hidden text-gray-400 bg-white/10 rounded-full w-8 h-8 flex items-center justify-center text-xs transition-transform">🔽</div>
-        </div>
+        <div><div class="text-base md:text-lg font-black tracking-widest">FLIGHT DASHBOARD</div></div>
+        <div id="dash-toggle-icon" class="md:hidden text-gray-400 bg-white/10 rounded-full w-8 h-8 flex items-center justify-center text-xs transition-transform">🔽</div>
     </div>
-    
     <div id="dash-content" class="flex flex-col flex-1 overflow-hidden transition-all duration-500 mt-4 opacity-100">
         <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
-            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-                <div class="text-[10px] text-gray-400 uppercase">總距離 Distance</div>
-                <div class="text-xl font-bold"><span id="stat-dist">0</span> <span class="text-xs text-gray-500">km</span></div>
-            </div>
-            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-                <div class="text-[10px] text-gray-400 uppercase">實際出行 Trips</div>
-                <div class="text-xl font-bold text-sky-400"><span id="stat-trips">0</span> <span class="text-[10px] text-gray-400 ml-1">趟</span></div>
-            </div>
-            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-                <div class="text-[10px] text-gray-400 uppercase">總航班數 Flights</div>
-                <div class="text-xl font-bold"><span id="stat-flights">0</span></div>
-            </div>
-            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-                <div class="text-[10px] text-gray-400 uppercase">最長航線 Longest</div>
-                <div class="text-sm font-bold truncate text-[#facc15]" id="sb-long-route">--</div>
-            </div>
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5"><div class="text-[10px] text-gray-400 uppercase">總距離 Distance</div><div class="text-xl font-bold"><span id="stat-dist">0</span> <span class="text-xs text-gray-500">km</span></div></div>
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5"><div class="text-[10px] text-gray-400 uppercase">實際出行 Trips</div><div class="text-xl font-bold text-sky-400"><span id="stat-trips">0</span> <span class="text-[10px] text-gray-400 ml-1">趟</span></div></div>
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5"><div class="text-[10px] text-gray-400 uppercase">總航班數 Flights</div><div class="text-xl font-bold"><span id="stat-flights">0</span></div></div>
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5"><div class="text-[10px] text-gray-400 uppercase">最長航線 Longest</div><div class="text-sm font-bold truncate text-[#facc15]" id="sb-long-route">--</div></div>
         </div>
-
-        <button onclick="toggleModal('passportModal')" class="w-full bg-[#5e35b1] hover:bg-[#673ab7] text-white font-bold py-3 rounded-xl mb-4 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-[0_0_15px_rgba(94,53,177,0.5)]">
-             打開 Open 
-        </button>
-
-        <div class="flex items-center justify-between mb-2 shrink-0">
-            <div class="text-xs text-gray-400 uppercase font-bold">近期日誌 Recent Logs</div>
-        </div>
+        <button onclick="toggleModal('passportModal')" class="w-full bg-[#5e35b1] hover:bg-[#673ab7] text-white font-bold py-3 rounded-xl mb-4 transition-colors">打開護照 Open Passport</button>
+        <div class="text-xs text-gray-400 uppercase font-bold mb-2 shrink-0">近期日誌 Recent Logs</div>
         <div class="flex gap-2 overflow-x-auto pb-2 mb-2 shrink-0 text-xs font-bold" id="year-filters"></div>
         <div id="flight-list" class="overflow-y-auto space-y-2 pr-1 flex-1 pb-2"></div>
     </div>
 </div>
 
 <div id="passportModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex justify-center p-4 overflow-y-auto">
-    <div class="flighty-panel p-6 sm:p-10 rounded-[40px] w-full max-w-3xl shadow-2xl my-auto relative overflow-hidden border border-white/10">
-        <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-[#2a1b54] to-transparent opacity-50 pointer-events-none"></div>
+    <div class="flighty-panel modal-panel p-6 sm:p-10 rounded-[40px] w-full max-w-3xl shadow-2xl my-auto relative border border-white/10 opacity-0 scale-90">
         <div class="relative z-10 flex justify-between items-center mb-10">
             <h2 class="text-3xl font-black tracking-tighter">我的飛行紀錄 My flight logs</h2>
-            <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">&times;</button>
+            <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full">&times;</button>
         </div>
-        
         <div class="relative z-10 grid grid-cols-2 gap-8 mb-12">
             <div>
                 <div class="text-sm text-gray-400 font-bold mb-1">總飛行距離 Total Distance</div>
@@ -108,52 +79,30 @@
                 </div>
             </div>
             <div class="flex flex-col justify-between">
-                <div>
-                    <div class="text-sm text-gray-400 font-bold mb-1">總時長 Total Time</div>
-                    <div class="text-5xl font-light tracking-tighter" id="pp-time-main">0<span class="text-2xl text-gray-500">h</span> 0<span class="text-2xl text-gray-500">m</span></div>
-                </div>
+                <div><div class="text-sm text-gray-400 font-bold mb-1">總時長 Total Time</div><div class="text-5xl font-light tracking-tighter" id="pp-time-main">0h 0m</div></div>
                 <div class="grid grid-cols-2 gap-4 mt-6">
-                    <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">滯空天數 Days in Air</div><div class="text-xl font-bold leading-none mt-1" id="pp-days">0</div></div>
-                    <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">平均航程 Avg Flight</div><div class="text-xl font-bold leading-none mt-1" id="pp-avg-time">0h</div></div>
-                    <div class="bg-white/5 p-3 rounded-xl border border-[#5e35b1]/30 flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">滯空時間 In Air</div><div class="text-xl font-bold leading-none mt-1" id="pp-in-air">0h</div></div>
-                    <div class="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-between">
+                    <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">滯空天數 Days in Air</div><div class="text-xl font-bold mt-1" id="pp-days">0</div></div>
+                    <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">平均航程 Avg Flight</div><div class="text-xl font-bold mt-1" id="pp-avg-time">0h</div></div>
+                    <div class="bg-white/5 p-3 rounded-xl border border-[#5e35b1]/30 flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">滯空時間 In Air</div><div class="text-xl font-bold mt-1" id="pp-in-air">0h</div></div>
+                    <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-between">
                         <div class="text-[10px] text-gray-400 uppercase">航班數 Total Flights</div>
-                        <div class="flex justify-between items-end mt-1"><span class="text-2xl font-bold leading-none" id="pp-total-flights-box">0</span><div class="text-[9px] text-gray-500 text-right leading-tight">國內 Dom <span id="pp-dom" class="font-bold text-gray-300">0</span><br>國際 Int <span id="pp-int" class="font-bold text-sky-400">0</span><br>長程 Lng <span id="pp-long" class="font-bold text-[#facc15]">0</span></div></div>
+                        <div class="flex justify-between items-end mt-1"><span class="text-2xl font-bold" id="pp-total-flights-box">0</span><div class="text-[9px] text-gray-500 text-right">國內 <span id="pp-dom" class="font-bold text-gray-300">0</span><br>國際 <span id="pp-int" class="font-bold text-sky-400">0</span><br>長程 <span id="pp-long" class="font-bold text-[#facc15]">0</span></div></div>
                     </div>
                 </div>
             </div>
         </div>
-
         <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">起飛時段 Takeoff (24H)</div>
-                <div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-takeoff"></canvas></div>
-            </div>
-            <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">降落時段 Landing (24H)</div>
-                <div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-landing"></canvas></div>
-            </div>
+            <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">起飛時段 Takeoff (24H)</div><div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-takeoff"></canvas></div></div>
+            <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">降落時段 Landing (24H)</div><div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-landing"></canvas></div></div>
         </div>
-
         <div class="relative z-10 grid grid-cols-2 gap-6 mb-12">
             <div class="bg-white/5 p-5 rounded-3xl"><div class="text-xs text-gray-400 uppercase font-bold mb-3">年度趨勢 Yearly Trend</div><canvas id="chart-yearly" class="w-full h-32"></canvas></div>
             <div class="bg-white/5 p-5 rounded-3xl"><div class="text-xs text-gray-400 uppercase font-bold mb-3">月度熱力 Monthly Heat</div><canvas id="chart-monthly" class="w-full h-32"></canvas></div>
         </div>
-
         <div class="relative z-10 grid grid-cols-2 gap-6 mb-12">
-            <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">艙等 Class</div>
-                <div id="chart-class" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常搭乘</span><span class="font-bold text-sm leading-tight px-2" id="top-class-name">--</span></div></div>
-                <div id="legend-class" class="w-full space-y-1 text-xs"></div>
-            </div>
-            <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center">
-                <div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">座位 Seat</div>
-                <div id="chart-seat" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常劃位</span><span class="font-bold text-sm" id="top-seat-name">--</span></div></div>
-                <div id="legend-seat" class="w-full space-y-1 text-xs"></div>
-                <div class="mt-4 pt-3 border-t border-white/10 w-full flex justify-between items-center text-xs"><span class="text-gray-400">逃生門 Exit Row</span><span class="font-bold text-[#facc15]" id="stat-exit-row">0</span></div>
-            </div>
+            <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">艙等 Class</div><div id="chart-class" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常搭乘</span><span class="font-bold text-sm px-2" id="top-class-name">--</span></div></div><div id="legend-class" class="w-full space-y-1 text-xs"></div></div>
+            <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">座位 Seat</div><div id="chart-seat" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常劃位</span><span class="font-bold text-sm" id="top-seat-name">--</span></div></div><div id="legend-seat" class="w-full space-y-1 text-xs"></div><div class="mt-4 pt-3 border-t w-full flex justify-between"><span class="text-gray-400">逃生門 Exit Row</span><span class="font-bold text-[#facc15]" id="stat-exit-row">0</span></div></div>
         </div>
-
         <div class="relative z-10 space-y-10">
             <div><div class="flex items-baseline gap-2 mb-4"><div class="text-3xl font-black" id="pp-total-aircraft">0</div><div class="text-gray-400 font-bold">機型 Top Aircraft</div></div><div id="list-aircraft" class="space-y-3"></div></div>
             <div><div class="flex items-baseline gap-2 mb-4"><div class="text-3xl font-black" id="pp-total-airports">0</div><div class="text-gray-400 font-bold">機場 Top Airports</div></div><div id="list-airports" class="space-y-3"></div></div>
@@ -163,89 +112,68 @@
     </div>
 </div>
 
-<div id="addFlightModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-    <div class="glass-panel p-8 rounded-3xl w-full max-w-md border border-white/20 overflow-y-auto max-h-[90vh]">
+<div id="addFlightModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="glass-panel modal-panel p-8 rounded-3xl w-full max-w-md border border-white/20 overflow-y-auto max-h-[90vh] opacity-0 scale-90">
         <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
             <h2 class="text-2xl font-bold">新增航班 Add Flight</h2>
             <button onclick="toggleModal('addFlightModal')" class="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
         <form id="flightForm" class="space-y-5" onsubmit="submitFlight(event)">
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">日期 Date</label>
-                <input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
+            <div><label class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">降落 Landing</label><input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label>
-                    <input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">降落 Landing</label>
-                    <input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
-                </div>
+                <div><label class="block text-xs text-gray-400 mb-1">出發地 Origin</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">目的地 Dest</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
             </div>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">出發地 Origin</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">目的地 Dest</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
-            </div>
-            
             <div class="grid grid-cols-3 gap-4">
-                <div><label class="block text-xs text-gray-400 mb-1">航司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="BR"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">航班號 Flight No.</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" placeholder="87"></div>
-                <div><label class="block text-xs text-gray-400 mb-1">機型 Aircraft</label><input type="text" id="inp-type" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">航司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">航班號 Flight No.</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">機型 Aircraft</label><input type="text" id="inp-type" class="w-full bg-white/10 rounded-lg px-3 py-2"></div>
             </div>
-
             <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">艙等 Class</label>
-                    <select id="inp-seat-class" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
-                        <option value="">未指定 None</option>
-                        <option value="Economy">經濟艙 Economy</option>
-                        <option value="Premium Economy">豪華經濟艙 Premium</option>
-                        <option value="Business">商務艙 Business</option>
-                        <option value="First Class">頭等艙 First Class</option>
-                    </select>
+                    <select id="inp-seat-class" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"><option value="">未指定 None</option><option value="Economy">經濟艙 Economy</option><option value="Premium Economy">豪華經濟艙 Premium</option><option value="Business">商務艙 Business</option><option value="First Class">頭等艙 First Class</option></select>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">位置 Type</label>
-                    <select id="inp-seat-type" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
-                        <option value="">未指定 None</option>
-                        <option value="Window">靠窗 Window</option>
-                        <option value="Middle">中間 Middle</option>
-                        <option value="Aisle">走道 Aisle</option>
-                    </select>
+                    <select id="inp-seat-type" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"><option value="">未指定 None</option><option value="Window">靠窗 Window</option><option value="Middle">中間 Middle</option><option value="Aisle">走道 Aisle</option></select>
                 </div>
-                <div><label class="block text-xs text-gray-400 mb-1">座位號 Seat</label><input type="text" id="inp-seat" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase"></div>
+                <div><label class="block text-xs text-gray-400 mb-1">座位號 Seat</label><input type="text" id="inp-seat" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
             </div>
-
             <div class="flex items-center pt-2">
-                <input type="checkbox" id="inp-exit-row" class="w-4 h-4 rounded bg-white/10 border border-white/10 text-sky-500 cursor-pointer">
+                <input type="checkbox" id="inp-exit-row" class="w-4 h-4 rounded text-sky-500 cursor-pointer">
                 <label for="inp-exit-row" class="ml-2 text-sm text-gray-300 cursor-pointer">逃生門 Exit Row</label>
             </div>
-            
-            <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4 transition-colors">儲存 Save</button>
+            <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4">儲存 Save</button>
         </form>
     </div>
 </div>
 
 <script>
     // ==========================================
-    // 🌍 環境變數與字典設定區 (Environment & Dictionaries)
+    // 🌍 Globals & Framer Motion Setup
     // ==========================================
     const MAPBOX_TOKEN = 'pk.eyJ1IjoidXB0b25rZSIsImEiOiJjbW5sNnNwajAxNnY2MnJvZ3kzcDNqN2NlIn0.oriWVIXM8Oy80ZExDHSJUA';
     mapboxgl.accessToken = MAPBOX_TOKEN; 
-    
     const SUPABASE_URL = 'https://yrccanqxzrcoknzabifz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_lDfwRDxgMhzRwVk0-Qu3vg_9HTmTFZy';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let airportDB = {}; 
-    let globalFlights = []; 
     let editingFlightId = null;
     let currentYearFilter = 'ALL';
-    let isAppInitialized = false; // 防呆機制，防止 Style Load 重複觸發
     let animationState = { startTime: 0, planes: [], isRunning: false };
+
+    // 🔥 導入 Framer Motion 原生版 (motion)
+    let animate, stagger, spring;
+    import("https://cdn.jsdelivr.net/npm/motion@11.11.13/+esm").then(module => {
+        animate = module.animate; stagger = module.stagger; spring = module.spring;
+        initApp(); // 等待動畫引擎載入後，才啟動系統
+    });
 
     const airlineDB = {
         'BR': '長榮航空 EVA Air', 'CI': '中華航空 China Airlines', 'JX': '星宇航空 STARLUX', 
@@ -274,50 +202,24 @@
     };
 
     // ==========================================
-    // 1️⃣ Data Layer (資料層)
+    // 1️⃣ Data Layer (資料層：模擬 React 狀態驅動)
     // ==========================================
-    function smartSplitFlight(e) {
-        let val = e.target.value.toUpperCase().replace(/\s/g, '');
-        if (/^[0-9]{1,4}[A-Z]?$/.test(val)) return;
-        let match = val.match(/^([A-Z0-9]{2,3})([0-9]{1,4}[A-Z]?)$/);
-        if (match) {
-            document.getElementById('inp-airline').value = match[1];
-            document.getElementById('inp-flight-number').value = match[2];
-        }
-    }
-    document.getElementById('inp-airline').addEventListener('change', smartSplitFlight);
-    document.getElementById('inp-flight-number').addEventListener('change', smartSplitFlight);
-
-    function formatTimeString(decimalHrs) {
-        if(!decimalHrs) return '0h 0m';
-        const h = Math.floor(decimalHrs);
-        const m = Math.round((decimalHrs - h) * 60);
-        return `${h}h ${m}m`;
-    }
-
-    function getAirlineLogoUrl(iataCode) {
-        if (!iataCode || iataCode.length !== 2) return null; 
-        return `https://images.kiwi.com/airlines/64/${iataCode.toUpperCase()}.png`;
-    }
-
-    function getRouteColor(count) {
-        if(count === 1) return '#facc15';
-        if(count === 2) return '#3b82f6';
-        if(count === 3) return '#22c55e';
-        if(count === 4) return '#ffffff'; 
-        if(count === 5) return '#ef4444';
-        if(count === 6) return '#f97316';
-        return '#ffffff';
-    }
+    let flightsState = []; // 相當於 React 的 const [flights, setFlights]
+    const setFlights = (newData) => {
+        flightsState = newData;
+        triggerReactRender(); // 資料改變，驅動 UI 重繪
+    };
 
     async function loadGlobalAirports() {
+        const cachedDB = localStorage.getItem('airportDB_cache_v1');
+        if (cachedDB) {
+            airportDB = JSON.parse(cachedDB);
+            renderAirportOptions(); return;
+        }
         try {
-            const response = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
-            const data = await response.json();
-            let options = '';
-            
-            const manualOverrides = {
-                'TPE': { city: '桃園 Taipei' }, 'TSA': { city: '松山 Taipei' },                
+            const res = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
+            const data = await res.json();
+            const manualOverrides = { 'TPE': { city: '桃園 Taipei' }, 'TSA': { city: '松山 Taipei' },                
                 'HND': { city: '東京羽田 Tokyo' }, 'NRT': { city: '東京成田 Tokyo' }, 'KIX': { city: '大阪 Osaka' },
                 'OKA': { city: '沖繩 Okinawa' }, 'CTS': { city: '札幌 Sapporo' }, 'KMJ': { city: '熊本 Kumamoto' }, 'FUK': { city: '福岡 Fukuoka' },
                 'PEK': { city: '北京首都 Beijing' }, 'PVG': { city: '上海浦東 Shanghai' }, 'SHA': { city: '上海虹橋 Shanghai' },
@@ -332,148 +234,67 @@
                 'ABU': { city: '阿布達比 Abu Dhabi' }, 'DOH': { city: '杜哈 Doha' },
                 'JFK': { city: '紐約 New York' }, 'LAX': { city: '洛杉磯 Los Angeles' }, 'LAS': { city: '拉斯維加斯 Las Vegas' },
                 'IAD': { city: '華盛頓 Washington' }, 'SFO': { city: '舊金山 San Francisco' }, 'DEL': { city: '新德里 New Delhi' },
-                'CMB': { city: '科倫坡 Colombo' } 
-            };
-
+                'CMB': { city: '科倫坡 Colombo'}
+                    
+                };
             data.forEach(a => { 
                 if (a.code) {
                     let code = a.code.toUpperCase();
-                    let airportInfo = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
-                    if (manualOverrides[code]) airportInfo = { ...airportInfo, ...manualOverrides[code] };
-                    airportDB[code] = airportInfo;
-                    options += `<option value="${code}">${airportInfo.name} (${airportInfo.city})</option>`;
+                    airportDB[code] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country, ...manualOverrides[code] };
                 }
             });
-            document.getElementById('iata-list').innerHTML = options;
-        } catch (e) { console.error('字典載入失敗', e); }
+            localStorage.setItem('airportDB_cache_v1', JSON.stringify(airportDB));
+            renderAirportOptions();
+        } catch (e) { console.error(e); }
+    }
+
+    function renderAirportOptions() {
+        let options = '';
+        for (let code in airportDB) options += `<option value="${code}">${airportDB[code].name} (${airportDB[code].city})</option>`;
+        document.getElementById('iata-list').innerHTML = options;
     }
 
     async function fetchFlights() {
         const { data, error } = await supabaseClient.from('flights').select('*').order('flight_date', { ascending: false });
-        if (error) throw error;
-        globalFlights = data;
-        return data;
-    }
-
-    async function saveFlight(payload, id = null) {
-        if (id) return await supabaseClient.from('flights').update(payload).eq('id', id);
-        else return await supabaseClient.from('flights').insert([payload]);
-    }
-
-    async function deleteFlight(id) {
-        if(!confirm('確定要刪除這筆航班嗎？ Are you sure?')) return false;
-        const { error } = await supabaseClient.from('flights').delete().eq('id', id);
-        return !error;
-    }
-
-    // CSV 雙向引擎
-    function exportCSV() {
-        if(globalFlights.length === 0) return alert('無資料可匯出');
-        // 🚀 加入 takeoff_time
-        const headers = ['flight_date', 'takeoff_time', 'landing_time', 'origin_code', 'dest_code', 'airline', 'flight_number', 'seat', 'aircraft_type', 'flight_hours', 'seat_class', 'seat_type', 'is_exit_row'];
-        let csvContent = headers.join(',') + '\n';
-        
-        globalFlights.forEach(f => {
-            let row = headers.map(h => {
-                let val = f[h] === null ? '' : f[h];
-                return `"${val}"`; 
-            });
-            csvContent += row.join(',') + '\n';
-        });
-
-        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Flighty_Backup_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    async function importCSV(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async function(event) {
-            const text = event.target.result;
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-            if(lines.length < 2) return alert('CSV 格式錯誤或無資料');
-            
-            const headers = lines[0].replace(/"/g, '').split(',');
-            const payloads = [];
-            
-            for(let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/(^"|"$)/g, '').trim());
-                let rowData = {};
-                headers.forEach((h, index) => { rowData[h] = values[index] || null; });
-                
-                if(rowData.flight_hours) rowData.flight_hours = parseFloat(rowData.flight_hours);
-                if(rowData.is_exit_row) rowData.is_exit_row = (rowData.is_exit_row.toLowerCase() === 'true');
-                
-                if(rowData.origin_code && rowData.dest_code) payloads.push(rowData);
-            }
-
-            document.getElementById('db-status').innerText = '匯入中...';
-            const { error } = await supabaseClient.from('flights').insert(payloads);
-            if(error) {
-                console.error(error);
-                alert('匯入失敗，請檢查資料格式');
-            } else {
-                location.reload();
-            }
-        };
-        reader.readAsText(file);
+        if (!error) setFlights(data);
     }
 
     // ==========================================
-    // 2️⃣ Calculation Layer (計算層)
+    // 2️⃣ Calculation Layer (計算層：純粹處理邏輯)
     // ==========================================
     function calculateStats(flights) {
         let stats = {
             totalKm: 0, totalHours: 0, completedFlights: 0, domCount: 0, intCount: 0, longCount: 0,
             shortest: { route: '', dist: Infinity }, longest: { route: '', dist: -Infinity },
             freq: { airports: {}, airlines: {}, routes: {}, aircrafts: {} },
-            airportFlightsInfo: {}, 
+            airportFlightsInfo: {}, airportStats: {}, 
             seatStats: { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 },
-            yearlyDist: {}, monthlyCount: new Array(12).fill(0),
-            takeoffStats: new Array(24).fill(0),
-            landingStats: new Array(24).fill(0),
+            yearlyDist: {}, monthlyCount: new Array(12).fill(0), takeoffStats: new Array(24).fill(0), landingStats: new Array(24).fill(0),
             timeline: [], tripsCount: 0
         };
 
         const validFlights = flights.filter(f => f.origin_code && f.dest_code && airportDB[f.origin_code] && airportDB[f.dest_code]);
-        
-        // 🚀 排序引擎升級：結合「日期 + 起飛時間」進行精準排序
         stats.timeline = [...validFlights].sort((a, b) => {
             const dateA = new Date(`${a.flight_date || '1970-01-01'}T${a.takeoff_time || '00:00'}:00`).getTime();
             const dateB = new Date(`${b.flight_date || '1970-01-01'}T${b.takeoff_time || '00:00'}:00`).getTime();
             return dateA - dateB; 
         });
 
-        const uniqueDates = new Set(stats.timeline.filter(f => f.flight_date).map(f => f.flight_date));
-        stats.tripsCount = uniqueDates.size;
+        stats.tripsCount = new Set(stats.timeline.filter(f => f.flight_date).map(f => f.flight_date)).size;
 
         stats.timeline.forEach((f, i) => {
-            const orig = airportDB[f.origin_code];
-            const dest = airportDB[f.dest_code];
-            
+            const orig = airportDB[f.origin_code], dest = airportDB[f.dest_code];
             f.distance ||= turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
-            const dist = f.distance;
-            const routeName = `${f.origin_code} ✈️ ${f.dest_code}`;              
-            const routeKey = [f.origin_code, f.dest_code].sort().join('-');
+            const dist = f.distance, routeName = `${f.origin_code} ✈️ ${f.dest_code}`, routeKey = [f.origin_code, f.dest_code].sort().join('-');
             
-            stats.totalKm += dist;
-            stats.completedFlights++;
+            stats.totalKm += dist; stats.completedFlights++;
             if(f.flight_hours) stats.totalHours += parseFloat(f.flight_hours);
             if(orig.country === dest.country) stats.domCount++; else stats.intCount++;
             if(dist >= 4000) stats.longCount++;
-
             if(dist < stats.shortest.dist) stats.shortest = { route: routeName, dist: dist };
             if(dist > stats.longest.dist) stats.longest = { route: routeName, dist: dist };
             
-            stats.freq.airports[f.origin_code] = (stats.freq.airports[f.origin_code]||0)+1;
-            stats.freq.airports[f.dest_code] = (stats.freq.airports[f.dest_code]||0)+1;
+            stats.freq.airports[f.origin_code] = (stats.freq.airports[f.origin_code]||0)+1; stats.freq.airports[f.dest_code] = (stats.freq.airports[f.dest_code]||0)+1;
             stats.freq.routes[routeKey] = (stats.freq.routes[routeKey]||0)+1; 
             if(f.airline) stats.freq.airlines[f.airline] = (stats.freq.airlines[f.airline]||0)+1;
             if(f.aircraft_type) stats.freq.aircrafts[f.aircraft_type] = (stats.freq.aircrafts[f.aircraft_type]||0)+1;
@@ -483,575 +304,306 @@
             if(f.is_exit_row) stats.seatStats.exitRows++;
             
             if(f.flight_date) {
-                const y = f.flight_date.substring(0,4);
-                const m = parseInt(f.flight_date.substring(5,7)) - 1;
-                stats.yearlyDist[y] = (stats.yearlyDist[y] || 0) + dist;
-                stats.monthlyCount[m]++;
+                const y = f.flight_date.substring(0,4), m = parseInt(f.flight_date.substring(5,7)) - 1;
+                stats.yearlyDist[y] = (stats.yearlyDist[y] || 0) + dist; stats.monthlyCount[m]++;
             }
+            if(f.takeoff_time) { let h = parseInt(f.takeoff_time.split(':')[0]); if(!isNaN(h)) stats.takeoffStats[h]++; }
+            if(f.landing_time) { let h = parseInt(f.landing_time.split(':')[0]); if(!isNaN(h)) stats.landingStats[h]++; }
 
-            // 🚀 分析起飛與降落時間
-            if(f.takeoff_time) {
-                let hour = parseInt(f.takeoff_time.split(':')[0]);
-                if(!isNaN(hour) && hour >= 0 && hour < 24) stats.takeoffStats[hour]++;
-            }
-            if(f.landing_time) {
-                let lHour = parseInt(f.landing_time.split(':')[0]);
-                if(!isNaN(lHour) && lHour >= 0 && lHour < 24) stats.landingStats[lHour]++;
-            }
-            
+            if(!stats.airportStats[f.origin_code]) stats.airportStats[f.origin_code] = { dep: 0, arr: 0, routes: {}, total: 0 };
+            if(!stats.airportStats[f.dest_code]) stats.airportStats[f.dest_code] = { dep: 0, arr: 0, routes: {}, total: 0 };
+            stats.airportStats[f.origin_code].dep++; stats.airportStats[f.origin_code].total++; stats.airportStats[f.origin_code].routes[f.dest_code] = (stats.airportStats[f.origin_code].routes[f.dest_code] || 0) + 1;
+            stats.airportStats[f.dest_code].arr++; stats.airportStats[f.dest_code].total++; stats.airportStats[f.dest_code].routes[f.origin_code] = (stats.airportStats[f.dest_code].routes[f.origin_code] || 0) + 1;
+
             if(!stats.airportFlightsInfo[f.origin_code]) stats.airportFlightsInfo[f.origin_code] = [];
             if(!stats.airportFlightsInfo[f.dest_code]) stats.airportFlightsInfo[f.dest_code] = [];
-            const flightInfoStr = `${f.flight_date||'Unknown'} ${f.airline||''}${f.flight_number||''} ${f.origin_code}✈️${f.dest_code}`;
-            stats.airportFlightsInfo[f.origin_code].push(flightInfoStr);
-            stats.airportFlightsInfo[f.dest_code].push(flightInfoStr);
+            const infoStr = `${f.flight_date||''} ${f.airline||''}${f.flight_number||''} ${f.origin_code}✈️${f.dest_code}`;
+            stats.airportFlightsInfo[f.origin_code].push(infoStr); stats.airportFlightsInfo[f.dest_code].push(infoStr);
 
-            // 3D 高度幾何
             if (!f.routeCoords) {
-                const route = turf.greatCircle(orig.coords, dest.coords);
-                const lineDistance = turf.length(route);
-                const maxHeight = Math.min(lineDistance * 200, 2000000); 
-                const arcCoords = [];
+                const route = turf.greatCircle(orig.coords, dest.coords); const lineDistance = turf.length(route);
+                const maxHeight = Math.min(lineDistance * 200, 2000000); const arcCoords = [];
                 for (let d = 0; d <= lineDistance; d += lineDistance / 250) {
-                    let pt = turf.along(route, d).geometry.coordinates;
-                    let h = Math.sin((d / lineDistance) * Math.PI) * maxHeight;
+                    let pt = turf.along(route, d).geometry.coordinates; let h = Math.sin((d / lineDistance) * Math.PI) * maxHeight;
                     arcCoords.push([pt[0], pt[1], h]); 
                 }
-                arcCoords.push([dest.coords[0], dest.coords[1], 0]);
-                f.routeCoords = arcCoords;
+                arcCoords.push([dest.coords[0], dest.coords[1], 0]); f.routeCoords = arcCoords;
             }
-            
-            let rank = i; 
-            f.takeoffDelay = rank * 1800; 
             f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1); 
         });
 
+        Object.entries(stats.airportStats).sort((a, b) => b[1].total - a[1].total).forEach((entry, idx) => { entry[1].rank = idx + 1; });
         return stats;
     }
 
+    function getRouteColor(c) { return c===1?'#facc15':c===2?'#3b82f6':c===3?'#22c55e':c===4?'#ffffff':c===5?'#ef4444':c===6?'#f97316':'#ffffff'; }
+    function getAirlineLogoUrl(code) { return (!code || code.length !== 2) ? null : `https://images.kiwi.com/airlines/64/${code.toUpperCase()}.png`; }
+    function formatTimeString(hrs) { if(!hrs) return '0h 0m'; const h = Math.floor(hrs); return `${h}h ${Math.round((hrs - h) * 60)}m`; }
+
     // ==========================================
-    // 3️⃣ UI Layer (渲染層)
+    // 3️⃣ UI Layer (視圖渲染與 Framer Motion)
     // ==========================================
-    function renderDashboard(stats) {
-        const safeSetText = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
-        const safeSetHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
-
-        safeSetText('stat-dist', Math.round(stats.totalKm).toLocaleString());
-        safeSetText('stat-flights', stats.completedFlights);
-        safeSetText('stat-trips', stats.tripsCount); 
+    function triggerReactRender() {
+        let filtered = flightsState.filter(f => (currentYearFilter === 'ALL' || (f.flight_date && f.flight_date.startsWith(currentYearFilter))));
+        const stats = calculateStats(filtered);
         
-        if(stats.completedFlights > 0) {
-            safeSetText('sb-long-route', `${stats.longest.route} (${Math.round(stats.longest.dist)}km)`);
-            safeSetText('sb-short-route', `${stats.shortest.route} (${Math.round(stats.shortest.dist)}km)`);
-            safeSetText('pp-short-route', stats.shortest.route);
-            safeSetText('pp-short-dist', `${Math.round(stats.shortest.dist).toLocaleString()} km`);
-            safeSetText('pp-long-route', stats.longest.route);
-            safeSetText('pp-long-dist', `${Math.round(stats.longest.dist).toLocaleString()} km`);
-        } else {
-            safeSetText('sb-long-route', '--');
-            safeSetText('sb-short-route', '--');
-        }
-
-        safeSetText('pp-dist', Math.round(stats.totalKm).toLocaleString());
-        const earthRatio = (stats.totalKm / 40075);
-        const moonRatio = (stats.totalKm / 384400);
-        safeSetText('pp-earth', earthRatio.toFixed(1));
-        safeSetText('pp-moon', moonRatio.toFixed(2));
-        
-        const earthBar = document.getElementById('pp-earth-bar');
-        if(earthBar) earthBar.style.width = `${Math.min(earthRatio * 100, 100)}%`;
-        const moonBar = document.getElementById('pp-moon-bar');
-        if(moonBar) moonBar.style.width = `${Math.min(moonRatio * 100, 100)}%`;
-
-        const avgHours = stats.completedFlights ? (stats.totalHours / stats.completedFlights) : 0;
-        const hrs = Math.floor(stats.totalHours);
-        const mins = Math.round((stats.totalHours - hrs) * 60);
-        
-        safeSetHTML('pp-time-main', `${hrs}<span class="text-2xl text-gray-500">h</span> ${mins}<span class="text-2xl text-gray-500">m</span>`);
-        safeSetText('pp-days', (stats.totalHours / 24).toFixed(1));
-        safeSetText('pp-avg-time', `${Math.floor(avgHours)}h ${Math.round((avgHours-Math.floor(avgHours))*60)}m`);
-        safeSetText('pp-in-air', `${Math.floor(stats.totalHours)}h ${Math.round((stats.totalHours-Math.floor(stats.totalHours))*60)}m`);
-
-        safeSetText('pp-total-flights-box', stats.completedFlights);
-        safeSetText('pp-dom', stats.domCount);
-        safeSetText('pp-int', stats.intCount);
-        safeSetText('pp-long', stats.longCount);
-    }
-
-    function renderFlightList(timelineFlights) {
-        const listHTML = timelineFlights.map((f, i) => {
-            const routeName = `${f.origin_code} ✈️ ${f.dest_code}`;
-            const logoUrl = getAirlineLogoUrl(f.airline); 
-            const airlineDisplay = f.airline ? (logoUrl ? `<img src="${logoUrl}" alt="${f.airline}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
-            const dateBadge = f.flight_date ? `<span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date.substring(0,4)}</span>` : '';
-            const routeId = `r-${i}`;
-
-            return `
-                <div class="bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 group cursor-pointer hover:bg-white/10 transition-colors" onclick="focusFlightRoute('${routeId}', '${f.origin_code}', '${f.dest_code}')">
-                    ${airlineDisplay} 
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-center mb-0.5">
-                            <span class="font-bold tracking-wider truncate">${routeName}</span>
-                            <div class="flex items-center gap-1 shrink-0 ml-2">
-                                ${dateBadge}
-                                <button onclick="event.stopPropagation(); editFlight(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">✏️</button>
-                                <button onclick="event.stopPropagation(); deleteFlightHandler(${f.id})" class="opacity-30 group-hover:opacity-100 hover:scale-110 transition-all text-xs ml-1">🗑️</button>
-                            </div>
-                        </div>
-                        <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${f.aircraft_type||''} · ${formatTimeString(f.flight_hours)} · ${Math.round(f.distance)}km</div>
-                    </div>
-                </div>`;
-        }).join('');
-        document.getElementById('flight-list').innerHTML = listHTML;
-    }
-
-    function renderChartsAndLists(stats) {
-        const classColors = { 'Economy': '#bae6fd', 'Premium Economy': '#7dd3fc', 'Business': '#0284c7', 'First Class': '#082f49' };
-        const typeColors = { 'Window': '#3b82f6', 'Middle': '#f59e0b', 'Aisle': '#22c55e' };
-        const chartDict = { 'Economy': '經濟艙 Economy', 'Premium Economy': '豪華經濟艙 Premium', 'Business': '商務艙 Business', 'First Class': '頭等艙 First Class', 'Window': '靠窗 Window', 'Middle': '中間 Middle', 'Aisle': '走道 Aisle' };
-
-        const renderDonut = (data, colors, total, chartId, legendId, topNameId) => {
-            let gradient = [], currentAngle = 0, legendHTML = '', topName = '--', maxVal = 0;
-            for (let [key, val] of Object.entries(data)) {
-                if (val > maxVal) { maxVal = val; topName = key; }
-                if (val === 0) continue;
-                let angle = (val / total) * 360;
-                let color = colors[key] || '#888';
-                gradient.push(`${color} ${currentAngle}deg ${currentAngle + angle}deg`);
-                currentAngle += angle;
-                let pct = Math.round((val/total)*100);
-                let displayKey = chartDict[key] || key;
-                legendHTML += `<div class="flex justify-between items-center"><div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full" style="background:${color}"></div><span class="text-gray-300 truncate w-24 text-[10px]">${displayKey}</span></div><span class="font-bold">${pct}%</span></div>`;
-            }
-            if(total > 0) {
-                const chartEl = document.getElementById(chartId);
-                if(chartEl) chartEl.style.background = `conic-gradient(${gradient.join(', ')})`;
-                const topNameEl = document.getElementById(topNameId);
-                if(topNameEl) topNameEl.innerText = (chartDict[topName] || topName).split(' ')[0]; 
-                const legendEl = document.getElementById(legendId);
-                if(legendEl) legendEl.innerHTML = legendHTML;
-            }
-        };
-
-        renderDonut(stats.seatStats.class, classColors, stats.seatStats.validClasses, 'chart-class', 'legend-class', 'top-class-name');
-        renderDonut(stats.seatStats.type, typeColors, stats.seatStats.validTypes, 'chart-seat', 'legend-seat', 'top-seat-name');
-        
-        const exitRowEl = document.getElementById('stat-exit-row');
-        if(exitRowEl) exitRowEl.innerText = stats.seatStats.exitRows;
-
-        const renderList = (dataObj, containerId, colorClass, listType = 'normal') => {
-            const sorted = Object.entries(dataObj).sort((a,b) => b[1]-a[1]);
-            const container = document.getElementById(containerId);
-            if(!container) return 0;
-            
-            const maxVal = sorted.length ? sorted[0][1] : 1;
-            
-            container.innerHTML = sorted.slice(0, 10).map(item => {
-                const name = item[0], count = item[1];
-                let displayName = name; let logoDisplay = '';
-                if(listType === 'airline') {
-                    const logoUrl = getAirlineLogoUrl(name);
-                    logoDisplay = logoUrl ? `<img src="${logoUrl}" alt="${name}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-1 mr-3 shrink-0">` : '';
-                    displayName = airlineDB[name] ? `${name} ${airlineDB[name]}` : name;
-                }
-                if(listType === 'airport' && airportDB[name]) { displayName = `${name} ${airportDB[name].city}`; }
-                const widthPercent = (count/maxVal)*100;
-                return `
-                    <div class="flex items-center text-sm">
-                        ${logoDisplay}
-                        <div class="w-40 sm:w-48 font-bold truncate pr-2 flex-shrink-0">${displayName}</div>
-                        <div class="flex-1 flex items-center min-w-0">
-                            <div class="${colorClass} h-6 rounded-r-md bar-fill flex items-center px-2 text-white font-bold text-xs" style="width: ${widthPercent}%">${count}</div>
-                        </div>
-                    </div>`;
-            }).join('');
-            return sorted.length;
-        };
-
-        const elAircraft = document.getElementById('pp-total-aircraft');
-        if (elAircraft) elAircraft.innerText = renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600', 'normal');
-        const elRoutes = document.getElementById('pp-total-routes');
-        if (elRoutes) elRoutes.innerText = renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]', 'normal');
-        const elAirports = document.getElementById('pp-total-airports');
-        if (elAirports) elAirports.innerText = renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]', 'airport');
-        const elAirlines = document.getElementById('pp-total-airlines');
-        if (elAirlines) elAirlines.innerText = renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', 'airline');
-
-        // 🚀 繪製 24 小時雷達時鐘 (Polar Area Chart)
-        if(window.myTakeoffChart) window.myTakeoffChart.destroy();
-        const chartTakeoffCtx = document.getElementById('chart-takeoff');
-        if(chartTakeoffCtx) {
-            window.myTakeoffChart = new Chart(chartTakeoffCtx.getContext('2d'), {
-                type: 'polarArea',
-                data: {
-                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-                    datasets: [{
-                        data: stats.takeoffStats,
-                        // ☀️ 白天班機 (6-17) 用黃色，🌙 晚上/紅眼班機用藍色
-                        backgroundColor: stats.takeoffStats.map((val, i) => 
-                            (i >= 6 && i <= 17) ? 'rgba(250, 204, 21, 0.6)' : 'rgba(56, 189, 248, 0.6)' 
-                        ),
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return ` ${context.label} - ${context.raw} 趟`; } } } },
-                    scales: { r: { ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' }, angleLines: { color: 'rgba(255,255,255,0.1)' } } }
-                }
-            });
-        }
-        // 🛬 繪製 24 小時降落時鐘
-        if(window.myLandingChart) window.myLandingChart.destroy();
-        const chartLandingCtx = document.getElementById('chart-landing');
-        if(chartLandingCtx) {
-            window.myLandingChart = new Chart(chartLandingCtx.getContext('2d'), {
-                type: 'polarArea',
-                data: {
-                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-                    datasets: [{
-                        data: stats.landingStats,
-                        // ☀️ 白天降落用綠色，🌙 晚上降落用紫色
-                        backgroundColor: stats.landingStats.map((val, i) => 
-                            (i >= 6 && i <= 17) ? 'rgba(34, 197, 94, 0.6)' : 'rgba(126, 87, 194, 0.6)' 
-                        ),
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return ` ${context.label} - ${context.raw} 趟`; } } } },
-                    scales: { r: { ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' }, angleLines: { color: 'rgba(255,255,255,0.1)' } } }
-                }
-            });
-        }
-
-        if(window.myYearlyChart) window.myYearlyChart.destroy();
-        if(window.myMonthlyChart) window.myMonthlyChart.destroy();
-        
-        const chartYearlyCtx = document.getElementById('chart-yearly');
-        if(chartYearlyCtx) {
-            window.myYearlyChart = new Chart(chartYearlyCtx.getContext('2d'), {
-                type: 'line', data: { labels: Object.keys(stats.yearlyDist).sort(), datasets: [{ data: Object.keys(stats.yearlyDist).sort().map(k => Math.round(stats.yearlyDist[k])), borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', fill: true, tension: 0.4 }] },
-                options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { display: false } }, y: { display: false } } }
-            });
-        }
-        
-        const chartMonthlyCtx = document.getElementById('chart-monthly');
-        if(chartMonthlyCtx) {
-            window.myMonthlyChart = new Chart(chartMonthlyCtx.getContext('2d'), {
-                type: 'bar', data: { labels: ['J','F','M','A','M','J','J','A','S','O','N','D'], datasets: [{ data: stats.monthlyCount, backgroundColor: '#facc15', borderRadius: 4 }] },
-                options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { display: false } }, y: { display: false } } }
-            });
-        }
+        renderFilters();
+        renderDashboard(stats);
+        renderFlightList(stats.timeline);
+        renderChartsAndLists(stats);
+        renderMapFeatures(stats);
     }
 
     function renderFilters() {
-        const years = new Set();
-        globalFlights.forEach(f => { if (f.flight_date) years.add(f.flight_date.substring(0, 4)); });
-        const sortedYears = Array.from(years).sort().reverse(); 
-        
-        let filterHTML = `<button onclick="filterByYear('ALL')" class="bg-white/20 px-3 py-1 rounded-full text-white">ALL</button>`;
-        sortedYears.forEach(year => {
-            let activeCls = (currentYearFilter === year) ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400';
-            filterHTML += `<button onclick="filterByYear('${year}')" class="${activeCls} px-3 py-1 rounded-full">${year}</button>`;
+        const years = new Set(); flightsState.forEach(f => { if (f.flight_date) years.add(f.flight_date.substring(0, 4)); });
+        let html = `<button onclick="filterByYear('ALL')" class="${currentYearFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full">ALL</button>`;
+        Array.from(years).sort().reverse().forEach(y => {
+            html += `<button onclick="filterByYear('${y}')" class="${currentYearFilter === y ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full">${y}</button>`;
         });
-        const yearFiltersEl = document.getElementById('year-filters');
-        if(yearFiltersEl) yearFiltersEl.innerHTML = filterHTML;
+        document.getElementById('year-filters').innerHTML = html;
     }
+    window.filterByYear = (y) => { currentYearFilter = y; triggerReactRender(); }
+
+    function renderDashboard(stats) {
+        const setTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
+        setTxt('stat-dist', Math.round(stats.totalKm).toLocaleString()); setTxt('stat-flights', stats.completedFlights); setTxt('stat-trips', stats.tripsCount); 
+        if(stats.completedFlights > 0) {
+            setTxt('sb-long-route', `${stats.longest.route} (${Math.round(stats.longest.dist)}km)`); setTxt('sb-short-route', `${stats.shortest.route} (${Math.round(stats.shortest.dist)}km)`);
+            setTxt('pp-short-route', stats.shortest.route); setTxt('pp-short-dist', `${Math.round(stats.shortest.dist).toLocaleString()} km`);
+            setTxt('pp-long-route', stats.longest.route); setTxt('pp-long-dist', `${Math.round(stats.longest.dist).toLocaleString()} km`);
+        }
+        setTxt('pp-dist', Math.round(stats.totalKm).toLocaleString());
+        setTxt('pp-earth', (stats.totalKm / 40075).toFixed(1)); setTxt('pp-moon', (stats.totalKm / 384400).toFixed(2));
+        const eBar = document.getElementById('pp-earth-bar'); if(eBar) eBar.style.width = `${Math.min((stats.totalKm / 40075) * 100, 100)}%`;
+        const mBar = document.getElementById('pp-moon-bar'); if(mBar) mBar.style.width = `${Math.min((stats.totalKm / 384400) * 100, 100)}%`;
+
+        const avg = stats.completedFlights ? (stats.totalHours / stats.completedFlights) : 0;
+        document.getElementById('pp-time-main').innerHTML = `${Math.floor(stats.totalHours)}<span class="text-2xl text-gray-500">h</span> ${Math.round((stats.totalHours - Math.floor(stats.totalHours)) * 60)}<span class="text-2xl text-gray-500">m</span>`;
+        setTxt('pp-days', (stats.totalHours / 24).toFixed(1)); setTxt('pp-avg-time', formatTimeString(avg)); setTxt('pp-in-air', formatTimeString(stats.totalHours));
+        setTxt('pp-total-flights-box', stats.completedFlights); setTxt('pp-dom', stats.domCount); setTxt('pp-int', stats.intCount); setTxt('pp-long', stats.longCount);
+    }
+
+    function renderFlightList(timeline) {
+        document.getElementById('flight-list').innerHTML = timeline.map((f, i) => {
+            const logo = getAirlineLogoUrl(f.airline); 
+            const display = f.airline ? (logo ? `<img src="${logo}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
+            return `
+                <div class="flight-card bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 cursor-pointer opacity-0" onclick="window.focusFlightRoute('r-${i}', '${f.origin_code}', '${f.dest_code}')">
+                    ${display} 
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center mb-0.5">
+                            <span class="font-bold truncate">${f.origin_code} ✈️ ${f.dest_code}</span>
+                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date ? f.flight_date.substring(0,4) : ''}</span>
+                                <button onclick="event.stopPropagation(); window.editFlight(${f.id})" class="opacity-50 hover:opacity-100 text-xs ml-1">✏️</button>
+                                <button onclick="event.stopPropagation(); window.deleteFlightHandler(${f.id})" class="opacity-50 hover:opacity-100 text-xs ml-1">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${formatTimeString(f.flight_hours)} · ${Math.round(f.distance)}km</div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        // 🔥 Framer Motion: List Stagger Animation
+        if (animate && stagger) {
+            animate(".flight-card", { x: [-30, 0], opacity: [0, 1] }, { delay: stagger(0.05), duration: 0.4, easing: "ease-out" });
+        }
+    }
+
+    function renderChartsAndLists(stats) {
+        const renderList = (data, id, colorCls, isLogo=false) => {
+            const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]); const max = sorted.length ? sorted[0][1] : 1;
+            const el = document.getElementById(id); if(!el) return 0;
+            el.innerHTML = sorted.slice(0, 10).map(i => {
+                let name = i[0]; if(isLogo && airlineDB[name]) name = `${name} ${airlineDB[name]}`; else if(!isLogo && airportDB[name]) name = `${name} ${airportDB[name].city}`;
+                const lg = isLogo && getAirlineLogoUrl(i[0]) ? `<img src="${getAirlineLogoUrl(i[0])}" class="w-6 h-6 rounded-full bg-white/5 p-1 mr-3 shrink-0">` : '';
+                return `<div class="flex items-center text-sm">${lg}<div class="w-40 sm:w-48 font-bold truncate pr-2">${name}</div><div class="flex-1 min-w-0"><div class="${colorCls} h-6 rounded-r-md flex items-center px-2 text-xs font-bold" style="width:${(i[1]/max)*100}%">${i[1]}</div></div></div>`;
+            }).join('');
+            return sorted.length;
+        };
+        const sTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
+        sTxt('pp-total-aircraft', renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600'));
+        sTxt('pp-total-routes', renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]'));
+        sTxt('pp-total-airports', renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]'));
+        sTxt('pp-total-airlines', renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', true));
+
+        const renderPolar = (ctxId, data, isTakeoff) => {
+            if(window[`chart_${ctxId}`]) window[`chart_${ctxId}`].destroy();
+            const ctx = document.getElementById(ctxId); if(!ctx) return;
+            window[`chart_${ctxId}`] = new Chart(ctx.getContext('2d'), {
+                type: 'polarArea', data: { labels: Array.from({length:24}, (_,i)=>`${i}:00`), datasets: [{ data: data, backgroundColor: data.map((_, i) => (i>=6 && i<=17) ? (isTakeoff?'rgba(250,204,21,0.6)':'rgba(34,197,94,0.6)') : (isTakeoff?'rgba(56,189,248,0.6)':'rgba(126,87,194,0.6)')), borderWidth: 0 }] },
+                options: { plugins: { legend: { display: false } }, scales: { r: { ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' }, angleLines: { color: 'rgba(255,255,255,0.1)' } } } }
+            });
+        };
+        renderPolar('chart-takeoff', stats.takeoffStats, true); renderPolar('chart-landing', stats.landingStats, false);
+    }
+
+    // 🔥 Modal Animation Engine
+    window.toggleModal = function(id) {
+        const el = document.getElementById(id);
+        const panel = el.querySelector('.modal-panel');
+        if(el.classList.contains('hidden')) {
+            el.classList.remove('hidden');
+            if(animate) {
+                animate(el, { opacity: [0, 1] }, { duration: 0.2 });
+                animate(panel, { scale: [0.9, 1], y: [30, 0], opacity: [0, 1] }, { type: "spring", bounce: 0.4, duration: 0.6 });
+            }
+        } else {
+            if(animate) {
+                animate(el, { opacity: 0 }, { duration: 0.3 });
+                animate(panel, { scale: 0.9, y: 30, opacity: 0 }, { duration: 0.3 }).finished.then(() => el.classList.add('hidden'));
+            } else el.classList.add('hidden');
+        }
+    };
+
+    window.toggleDashboard = function() {
+        if (window.innerWidth >= 768) return; 
+        const content = document.getElementById('dash-content');
+        const icon = document.getElementById('dash-toggle-icon');
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden'); setTimeout(() => content.classList.remove('opacity-0', 'h-0', 'mt-0'), 10);
+            icon.style.transform = 'rotate(0deg)';
+        } else {
+            content.classList.add('opacity-0', 'h-0', 'mt-0'); icon.style.transform = 'rotate(180deg)';
+            setTimeout(() => content.classList.add('hidden'), 500); 
+        }
+    };
 
     // ==========================================
     // 4️⃣ Map Layer (地圖與單一渲染引擎)
     // ==========================================
-    mapboxgl.accessToken = MAPBOX_TOKEN;
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
-    
-    map.on('style.load', () => {
-        map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
-    });
+    map.on('style.load', () => map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 }));
 
-    function renderMapMarkers(stats) {
-        let airportFeatures = [];
+    function renderMapFeatures(stats) {
+        // --- 1. Airports ---
+        let airFeats = [];
         for (let [code, count] of Object.entries(stats.freq.airports)) {
-            if (airportDB[code]) airportFeatures.push({ type: 'Feature', properties: { code: code, count: count, name: airportDB[code].name, city: airportDB[code].city }, geometry: { type: 'Point', coordinates: airportDB[code].coords } });
+            if (airportDB[code]) airFeats.push({ type: 'Feature', properties: { code, count, name: airportDB[code].name, city: airportDB[code].city }, geometry: { type: 'Point', coordinates: airportDB[code].coords } });
         }
-        
-        if(map.getSource('airports')) { map.getSource('airports').setData({ type: 'FeatureCollection', features: airportFeatures }); } 
+        if(map.getSource('airports')) { map.getSource('airports').setData({ type: 'FeatureCollection', features: airFeats }); } 
         else {
-            map.addSource('airports', { type: 'geojson', data: { type: 'FeatureCollection', features: airportFeatures } });
+            map.addSource('airports', { type: 'geojson', data: { type: 'FeatureCollection', features: airFeats } });
             map.addLayer({ id: 'airports-glow', type: 'circle', source: 'airports', paint: { 'circle-radius': ['*', ['get', 'count'], 4], 'circle-color': '#facc15', 'circle-opacity': 0.4, 'circle-blur': 1 } });
             map.addLayer({ id: 'airports-core', type: 'circle', source: 'airports', paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-width': 1, 'circle-stroke-color': '#000' } });
             
             map.on('click', 'airports-core', (e) => {
-                const props = e.features[0].properties;
-                const flightsHere = stats.airportFlightsInfo[props.code] || [];
-                const flightListHTML = flightsHere.map(f => `<div class="text-[10px] text-gray-300 border-b border-white/10 py-1">${f}</div>`).join('');
-
-                new mapboxgl.Popup({ closeButton: false }).setLngLat(e.features[0].geometry.coordinates)
-                    .setHTML(`
-                        <div>
-                            <strong class="text-lg">${props.code}</strong>
-                            <div class="text-xs text-gray-400">${props.name}</div>
-                            <div class="text-sm font-bold text-sky-400 mt-1 mb-2">${props.city} · 造訪 ${props.count} 次</div>
-                            <div class="max-h-32 overflow-y-auto pr-1 mt-2 border-t border-white/20 pt-1">
-                                ${flightListHTML}
-                            </div>
-                        </div>
-                    `).addTo(map);
+                const p = e.features[0].properties; const astats = stats.airportStats[p.code];
+                let topRt = '--'; if(astats && Object.keys(astats.routes).length > 0) { const tr = Object.entries(astats.routes).sort((a,b)=>b[1]-a[1])[0]; topRt = `${p.code} ⇄ ${tr[0]} (${tr[1]}次)`; }
+                const listHTML = (stats.airportFlightsInfo[p.code]||[]).map(f => `<div class="text-[10px] text-gray-300 border-b border-white/10 py-1">${f}</div>`).join('');
+                new mapboxgl.Popup({ closeButton: false }).setLngLat(e.features[0].geometry.coordinates).setHTML(`
+                    <div class="min-w-[220px]">
+                        <div class="flex justify-between items-start mb-2"><div><strong class="text-xl font-black">${p.code}</strong><div class="text-xs text-gray-400">${p.name}</div></div><div class="bg-sky-500/20 text-sky-400 px-2 py-1 rounded text-[10px] font-bold">TOP ${astats?astats.rank:'-'}</div></div>
+                        <div class="grid grid-cols-2 gap-2 mb-3 bg-black/30 p-2 rounded-lg text-center"><div><div class="text-[9px] text-gray-500">出發 Dep</div><div class="font-bold text-base">${astats?astats.dep:0}</div></div><div class="border-l border-white/10"><div class="text-[9px] text-gray-500">抵達 Arr</div><div class="font-bold text-base">${astats?astats.arr:0}</div></div></div>
+                        <div class="mb-3"><div class="text-[9px] text-gray-500">最常飛航線 Top Route</div><div class="text-xs font-bold text-[#facc15]">${topRt}</div></div>
+                        <div class="text-[10px] font-bold text-gray-400 border-b border-white/20 pb-1 mb-1">歷史航班 History</div>
+                        <div class="max-h-32 overflow-y-auto pr-1">${listHTML}</div>
+                    </div>`).addTo(map);
             });
-            map.on('mouseenter', 'airports-core', () => map.getCanvas().style.cursor = 'pointer');
-            map.on('mouseleave', 'airports-core', () => map.getCanvas().style.cursor = '');
         }
-    }
 
-    function renderRoutesAndStartAnimation(timelineFlights) {
-        if (map.getStyle()) {
-            map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-')) map.removeLayer(l.id); });
-            Object.keys(map.getStyle().sources).forEach(s => { if (s.startsWith('r-')) map.removeSource(s); });
-        }
-        animationState.planes.forEach(p => p.marker.remove());
-        animationState.planes = [];
+        // --- 2. Routes & Animation ---
+        if (map.getStyle()) { map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-')) map.removeLayer(l.id); }); Object.keys(map.getStyle().sources).forEach(s => { if (s.startsWith('r-')) map.removeSource(s); }); }
+        animationState.planes.forEach(p => p.marker.remove()); animationState.planes = [];
 
-        timelineFlights.forEach((f, i) => {
+        stats.timeline.forEach((f, i) => {
             const routeId = `r-${i}`;
+            map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': [f.routeCoords[0], f.routeCoords[0]] } } });
+            map.addLayer({ 'id': `${routeId}-line`, 'type': 'line', 'source': routeId, 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': f.routeColor, 'line-width': 3, 'line-opacity': 0.85 } });
             
-            map.addSource(routeId, { 
-                'type': 'geojson', 
-                'data': { 'type': 'Feature', 'properties': {}, 'geometry': { 'type': 'LineString', 'coordinates': [f.routeCoords[0], f.routeCoords[0]] } } 
-            });
-            
-            map.addLayer({ 
-                'id': `${routeId}-line`, 'type': 'line', 'source': routeId, 
-                'layout': { 'line-join': 'round', 'line-cap': 'round' }, 
-                'paint': { 'line-color': f.routeColor, 'line-width': 3, 'line-opacity': 0.85 } 
-            });
-
-            const elContainer = document.createElement('div');
-            const planeIcon = document.createElement('div');
-            planeIcon.innerHTML = '✈️'; planeIcon.style.fontSize = '18px'; planeIcon.style.transition = 'transform 0.1s linear'; 
-            elContainer.appendChild(planeIcon);
+            const elContainer = document.createElement('div'); const planeIcon = document.createElement('div');
+            planeIcon.innerHTML = '✈️'; planeIcon.style.fontSize = '18px'; planeIcon.style.transition = 'transform 0.1s linear'; elContainer.appendChild(planeIcon);
             const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(f.routeCoords[0]).addTo(map);
-
-            animationState.planes.push({
-                id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords,
-                delay: f.takeoffDelay, step: 1, finished: false
-            });
+            animationState.planes.push({ id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords, finished: false, step: 1 });
         });
 
-        animationState.startTime = performance.now();
-        if(!animationState.isRunning) {
-            animationState.isRunning = true;
-            requestAnimationFrame(globalAnimationLoop);
-        }
+        if(!animationState.isRunning) { animationState.isRunning = true; requestAnimationFrame(globalAnimationLoop); }
     }
 
-    function globalAnimationLoop(timestamp) {
-        // 🔥 核心修改：找出陣列中「第一架還沒抵達」的飛機，保證絕對的「一架飛完才換下一架」
+    // 🔥 接力飛行引擎 (一架降落，下一架起飛)
+    function globalAnimationLoop() {
         let currentIndex = animationState.planes.findIndex(p => !p.finished);
-        
-        // 如果找不到（代表所有航班都飛完了），關閉動畫引擎
-        if (currentIndex === -1) {
-            animationState.isRunning = false;
-            return;
-        }
-
-        // 鎖定當前正在執勤的這架飛機
+        if (currentIndex === -1) { animationState.isRunning = false; return; }
         let p = animationState.planes[currentIndex];
 
         if (p.step < p.coords.length) {
-            const currentCoords = p.coords.slice(0, p.step + 1);
-            if(map.getSource(p.id)) {
-                map.getSource(p.id).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': currentCoords } } ] });
-            }
-            
-            const p1 = p.coords[p.step - 1];
-            const p2 = p.coords[p.step];
-            const bearing = turf.bearing(p1, p2);
-            
-            p.marker.setLngLat(p2);
-            p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
-
-            p.step++; // ✈️ 飛行速度 (每幀前進的步數)
+            if(map.getSource(p.id)) map.getSource(p.id).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords.slice(0, p.step + 1) } } ] });
+            const bearing = turf.bearing(p.coords[p.step - 1], p.coords[p.step]);
+            p.marker.setLngLat(p.coords[p.step]); p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
+            p.step++; 
         } else {
-            // 抵達終點，標記完成並移除 DOM 飛機標籤，下一幀就會自動換下一架起飛
-            p.finished = true;
-            p.marker.remove(); 
+            p.finished = true; p.marker.remove(); 
         }
-
         requestAnimationFrame(globalAnimationLoop);
     }
 
     window.focusFlightRoute = function(routeId, origin, dest) {
-        if (map.getStyle()) {
-            map.getStyle().layers.forEach(l => { 
-                if (l.id.startsWith('r-') && l.id.endsWith('-line')) map.setPaintProperty(l.id, 'line-width', 3);
-            });
-        }
+        if (map.getStyle()) map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-') && l.id.endsWith('-line')) map.setPaintProperty(l.id, 'line-width', 3); });
         if (map.getLayer(`${routeId}-line`)) map.setPaintProperty(`${routeId}-line`, 'line-width', 8); 
-
-        const o = airportDB[origin], d = airportDB[dest];
-        if(!o || !d) return;
-        const midPoint = turf.midpoint(turf.point(o.coords), turf.point(d.coords)).geometry.coordinates;
-
-        map.flyTo({ center: midPoint, zoom: 4, duration: 1500 });
+        map.flyTo({ center: turf.midpoint(turf.point(airportDB[origin].coords), turf.point(airportDB[dest].coords)).geometry.coordinates, zoom: 4, duration: 1500 });
     }
 
     // ==========================================
-    // Controller / Init
+    // Controller & UI Actions
     // ==========================================
     async function initApp() {
-        document.getElementById('db-status').innerHTML = '<span class="text-yellow-400">載入引擎 Initializing...</span>';
+        document.getElementById('db-status').innerText = '載入字典...';
         await loadGlobalAirports();
-        
         try {
+            document.getElementById('db-status').innerText = '拉取航班...';
             await fetchFlights();
-            document.getElementById('db-status').innerHTML = '<span class="text-green-400">系統上線 Online</span>';
-            isAppInitialized = true;
-            renderApp();
+            document.getElementById('db-status').innerText = '系統上線 Online';
+            document.getElementById('db-status').className = 'text-xl font-black text-green-400 flex items-center gap-2';
             
+            // 🔥 Framer Motion: 首頁載入動畫
+            if(animate) {
+                animate("#ui-header", { y: [-50, 0], opacity: [0, 1] }, { duration: 0.8, easing: "ease-out" });
+                animate("#main-dashboard", { y: [50, 0], opacity: [0, 1] }, { delay: 0.3, type: "spring", stiffness: 200, damping: 20 });
+            }
+
             if (window.innerWidth < 768) {
                 const content = document.getElementById('dash-content');
                 const icon = document.getElementById('dash-toggle-icon');
-                if (content && icon) {
-                    content.classList.add('hidden', 'opacity-0', 'h-0', 'mt-0');
-                    icon.style.transform = 'rotate(180deg)';
-                }
+                content.classList.add('hidden', 'opacity-0', 'h-0', 'mt-0'); icon.style.transform = 'rotate(180deg)';
             }
-        } catch(e) {
-            console.error("🔥 系統崩潰詳細原因：", e); 
-            document.getElementById('db-status').innerHTML = '<span class="text-red-500">連線失敗 Failed</span>';
-        }
+        } catch(e) { document.getElementById('db-status').innerHTML = '<span class="text-red-500">連線失敗 Failed</span>'; }
     }
 
-    function renderApp() {
-        renderFilters();
-        let filteredFlights = globalFlights.filter(f => {
-            if(currentYearFilter === 'ALL') return true;
-            if(!f.flight_date) return false;
-            return f.flight_date.startsWith(currentYearFilter);
-        });
-
-        const stats = calculateStats(filteredFlights);
-        renderDashboard(stats);
-        renderChartsAndLists(stats);
-        renderFlightList(stats.timeline);
-        
-        renderMapMarkers(stats);
-        renderRoutesAndStartAnimation(stats.timeline);
-    }
-
-    function filterByYear(year) {
-        currentYearFilter = year;
-        renderApp();
-    }
-
-    map.on('load', initApp);
-
-    // ==========================================
-    // Form & Modal Interaction
-    // ==========================================
-    function toggleModal(id) { 
-        const el = document.getElementById(id);
-        if(el) el.classList.toggle('hidden'); 
-    }
-    
-    function openAddModal() {
-        editingFlightId = null; 
-        const form = document.getElementById('flightForm');
-        if (form) form.reset();
-        
-        const submitBtn = document.getElementById('submitBtn');
-        if(submitBtn) submitBtn.innerText = '儲存 Save'; 
-        
-        const modalTitle = document.querySelector('#addFlightModal h2');
-        if(modalTitle) modalTitle.innerText = '新增航班 Add Flight';
-        
+    // 表單操作相關 (Add/Edit/Delete)
+    document.getElementById('flightForm').addEventListener('change', smartSplitFlight);
+    window.openAddModal = () => { editingFlightId = null; document.getElementById('flightForm').reset(); document.getElementById('submitBtn').innerText = '儲存 Save'; document.querySelector('#addFlightModal h2').innerText = '新增航班 Add Flight'; toggleModal('addFlightModal'); };
+    window.deleteFlightHandler = async (id) => { if(await deleteFlight(id)) fetchFlights(); };
+    window.editFlight = (id) => {
+        const f = flightsState.find(f => f.id === id); if(!f) return; editingFlightId = id; 
+        const sVal = (id, val) => document.getElementById(id).value = val || '';
+        sVal('inp-date', f.flight_date); sVal('inp-takeoff', f.takeoff_time); sVal('inp-landing', f.landing_time);
+        sVal('inp-origin', f.origin_code); sVal('inp-dest', f.dest_code); sVal('inp-airline', f.airline); sVal('inp-flight-number', f.flight_number); sVal('inp-type', f.aircraft_type);
+        document.getElementById('inp-seat-class').value = f.seat_class || ''; document.getElementById('inp-seat-type').value = f.seat_type || ''; document.getElementById('inp-seat').value = f.seat || '';
+        document.getElementById('inp-exit-row').checked = f.is_exit_row || false;
+        document.getElementById('submitBtn').innerText = '更新 Update'; document.querySelector('#addFlightModal h2').innerText = '編輯航班 Edit Flight';
         toggleModal('addFlightModal');
-    }
-
-    async function deleteFlightHandler(id) {
-        if(await deleteFlight(id)) {
-            await fetchFlights();
-            renderApp();
-        }
-    }
-
-    function editFlight(id) {
-        const flight = globalFlights.find(f => f.id === id);
-        if(!flight) return;
-        editingFlightId = id; 
-        
-        document.getElementById('inp-date').value = flight.flight_date || ''; 
-        document.getElementById('inp-takeoff').value = flight.takeoff_time || '';
-        document.getElementById('inp-landing').value = flight.landing_time || ''; // 👈 新增這行
-        document.getElementById('inp-origin').value = flight.origin_code || ''; 
-        document.getElementById('inp-dest').value = flight.dest_code || '';
-        document.getElementById('inp-airline').value = flight.airline || ''; 
-        document.getElementById('inp-flight-number').value = flight.flight_number || '';
-        document.getElementById('inp-seat').value = flight.seat || ''; 
-        document.getElementById('inp-type').value = flight.aircraft_type || '';
-        
-                
-        document.getElementById('inp-seat-class').value = flight.seat_class || ''; 
-        document.getElementById('inp-seat-type').value = flight.seat_type || '';
-        document.getElementById('inp-exit-row').checked = flight.is_exit_row || false;
-
-        document.getElementById('submitBtn').innerText = '更新 Update'; 
-        document.querySelector('#addFlightModal h2').innerText = '編輯航班 Edit Flight';
-        toggleModal('addFlightModal');
-    }
-
-    async function submitFlight(e) {
+    };
+    window.submitFlight = async (e) => {
         e.preventDefault();
-        const originInput = document.getElementById('inp-origin').value.toUpperCase(); 
-        const destInput = document.getElementById('inp-dest').value.toUpperCase();
-        if (!airportDB[originInput]) return alert(`找不到出發地代碼 Origin not found：${originInput}`);
-        if (!airportDB[destInput]) return alert(`找不到目的地代碼 Dest not found：${destInput}`);
+        const originInput = document.getElementById('inp-origin').value.toUpperCase(), destInput = document.getElementById('inp-dest').value.toUpperCase();
+        if (!airportDB[originInput] || !airportDB[destInput]) return alert('找不到機場代碼');
+        const btn = document.getElementById('submitBtn'); btn.innerText = '處理中...'; btn.disabled = true;
 
-        const btn = document.getElementById('submitBtn'); 
-        btn.innerText = '處理中...'; 
-        btn.disabled = true;
-
-        // 🔥 核心修改：捨棄手動輸入，根據航線距離全自動精算時長 (850km/h + 起降緩衝 0.5h)
-        const distKm = turf.distance(airportDB[originInput].coords, airportDB[destInput].coords, {units: 'kilometers'});
-        const autoFlightHours = parseFloat(((distKm / 850) + 0.5).toFixed(1));
-
-        const payload = {
-            flight_date: document.getElementById('inp-date').value || null, 
-            takeoff_time: document.getElementById('inp-takeoff').value || null, 
-            landing_time: document.getElementById('inp-landing').value || null, 
-            origin_code: originInput, dest_code: destInput,
-            airline: document.getElementById('inp-airline').value || null, 
-            flight_number: document.getElementById('inp-flight-number').value || null,
-            seat: document.getElementById('inp-seat').value.toUpperCase() || null, 
-            seat_class: document.getElementById('inp-seat-class').value || null,
-            seat_type: document.getElementById('inp-seat-type').value || null, 
-            is_exit_row: document.getElementById('inp-exit-row').checked,
-            aircraft_type: document.getElementById('inp-type').value || null, 
-            flight_hours: autoFlightHours // 👈 自動寫入
-        };
-
-        await saveFlight(payload, editingFlightId);
-        btn.disabled = false; 
-        btn.innerText = editingFlightId ? '更新 Update' : '儲存 Save';
-        toggleModal('addFlightModal');
-        await fetchFlights(); 
-        renderApp();
-    }
-
-    function toggleDashboard() {
-        if (window.innerWidth >= 768) return; 
-        const content = document.getElementById('dash-content');
-        const icon = document.getElementById('dash-toggle-icon');
-        if(!content || !icon) return;
-
-        if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden');
-            setTimeout(() => content.classList.remove('opacity-0', 'h-0', 'mt-0'), 10);
-            icon.style.transform = 'rotate(0deg)';
+        const takeoffTime = document.getElementById('inp-takeoff').value, landingTime = document.getElementById('inp-landing').value;
+        let flightHours = null;
+        if (takeoffTime && landingTime) {
+            let [tH, tM] = takeoffTime.split(':').map(Number), [lH, lM] = landingTime.split(':').map(Number);
+            let tMins = tH * 60 + tM, lMins = lH * 60 + lM;
+            if (lMins <= tMins) lMins += 24 * 60; 
+            flightHours = parseFloat(((lMins - tMins) / 60).toFixed(1));
         } else {
-            content.classList.add('opacity-0', 'h-0', 'mt-0');
-            icon.style.transform = 'rotate(180deg)';
-            setTimeout(() => content.classList.add('hidden'), 500); 
+            flightHours = parseFloat(((turf.distance(airportDB[originInput].coords, airportDB[destInput].coords, {units: 'kilometers'}) / 850) + 0.5).toFixed(1));
         }
-    }
+
+        const payload = { flight_date: document.getElementById('inp-date').value || null, takeoff_time: takeoffTime || null, landing_time: landingTime || null, origin_code: originInput, dest_code: destInput, airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null, seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null, seat_type: document.getElementById('inp-seat-type').value || null, is_exit_row: document.getElementById('inp-exit-row').checked, aircraft_type: document.getElementById('inp-type').value || null, flight_hours: flightHours };
+        await saveFlight(payload, editingFlightId); btn.disabled = false; btn.innerText = '儲存 Save'; toggleModal('addFlightModal'); fetchFlights();
+    };
+    window.exportCSV = exportCSV; window.importCSV = importCSV;
 </script>
 </body>
 </html>
