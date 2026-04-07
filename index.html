@@ -843,38 +843,39 @@
     }
 
     function globalAnimationLoop(timestamp) {
-        let elapsed = timestamp - animationState.startTime;
-        let activeCount = 0;
+        // 🔥 核心修改：找出陣列中「第一架還沒抵達」的飛機，保證絕對的「一架飛完才換下一架」
+        let currentIndex = animationState.planes.findIndex(p => !p.finished);
+        
+        // 如果找不到（代表所有航班都飛完了），關閉動畫引擎
+        if (currentIndex === -1) {
+            animationState.isRunning = false;
+            return;
+        }
 
-        animationState.planes.forEach(p => {
-            if (p.finished) return;
-            if (elapsed > p.delay) {
-                if (p.step < p.coords.length) {
-                    const currentCoords = p.coords.slice(0, p.step + 1);
-                    if(map.getSource(p.id)) {
-                        map.getSource(p.id).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': currentCoords } } ] });
-                    }
-                    
-                    const p1 = p.coords[p.step - 1];
-                    const p2 = p.coords[p.step];
-                    const bearing = turf.bearing(p1, p2);
-                    
-                    p.marker.setLngLat(p2);
-                    p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
+        // 鎖定當前正在執勤的這架飛機
+        let p = animationState.planes[currentIndex];
 
-                    p.step++;
-                    activeCount++;
-                } else {
-                    p.finished = true;
-                    p.marker.remove(); 
-                }
-            } else {
-                activeCount++; 
+        if (p.step < p.coords.length) {
+            const currentCoords = p.coords.slice(0, p.step + 1);
+            if(map.getSource(p.id)) {
+                map.getSource(p.id).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': currentCoords } } ] });
             }
-        });
+            
+            const p1 = p.coords[p.step - 1];
+            const p2 = p.coords[p.step];
+            const bearing = turf.bearing(p1, p2);
+            
+            p.marker.setLngLat(p2);
+            p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
 
-        if (activeCount > 0) requestAnimationFrame(globalAnimationLoop);
-        else animationState.isRunning = false;
+            p.step++; // ✈️ 飛行速度 (每幀前進的步數)
+        } else {
+            // 抵達終點，標記完成並移除 DOM 飛機標籤，下一幀就會自動換下一架起飛
+            p.finished = true;
+            p.marker.remove(); 
+        }
+
+        requestAnimationFrame(globalAnimationLoop);
     }
 
     window.focusFlightRoute = function(routeId, origin, dest) {
