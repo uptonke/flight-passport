@@ -584,15 +584,16 @@ if (seatEntries.length > 0) {
         if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
     };
 
-    // ==========================================
+   // ==========================================
     // 4️⃣ Map Layer (地圖與單一渲染引擎)
     // ==========================================
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
+
     // 🚨 每次 Style 載入完畢後，掛上星空、NASA Black Marble 與自訂 WebGL 月球
     map.on('style.load', () => {
         map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
 
-        // 🚀 1. 疊加 NASA Black Marble (夜間城市燈光) Raster 圖層
+        // 1. 疊加 NASA Black Marble (夜間城市燈光) Raster 圖層
         if (!map.getSource('nasa-black-marble')) {
             map.addSource('nasa-black-marble', {
                 'type': 'raster',
@@ -605,14 +606,13 @@ if (seatEntries.length > 0) {
                 'type': 'raster',
                 'source': 'nasa-black-marble',
                 'paint': {
-                    'raster-opacity': 0.5, // 👈 透明度 0.5，讓底層 Satellite 地貌透上來
+                    'raster-opacity': 0.5, 
                     'raster-contrast': 0.2
                 }
             });
         }
 
-        // 🚀 2. 建立自訂 WebGL 3D 月球 Layer (CustomLayerInterface)
-        // 設定月球懸浮在經緯度 [0, 0]，高度 3000 萬公尺的高空
+        // 2. 建立自訂 WebGL 3D 月球 Layer
         const moonLocation = mapboxgl.MercatorCoordinate.fromLngLat([0, 0], 30000000);
         const moonTransform = {
             translateX: moonLocation.x,
@@ -629,10 +629,8 @@ if (seatEntries.length > 0) {
                 this.camera = new THREE.Camera();
                 this.scene = new THREE.Scene();
 
-                // 創建月球球體幾何 (半徑 3474km 等比)
                 const geometry = new THREE.SphereGeometry(3474800, 64, 64); 
                 const textureLoader = new THREE.TextureLoader();
-                // 載入真實的 Clementine 衛星月球表面貼圖
                 const texture = textureLoader.load('https://upload.wikimedia.org/wikipedia/commons/d/db/Moonmap_from_clementine_data.png');
                 const material = new THREE.MeshBasicMaterial({ map: texture });
                 
@@ -644,10 +642,8 @@ if (seatEntries.length > 0) {
                 this.renderer.autoClear = false;
             },
             render: function (gl, matrix) {
-                // 賦予月球微小的自轉動畫
                 this.moon.rotation.y += 0.002; 
 
-                // 將 Mapbox 的矩陣轉換給 Three.js 的 Camera
                 const rotationX = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
                 const m = new THREE.Matrix4().fromArray(matrix);
                 const l = new THREE.Matrix4().makeTranslation(moonTransform.translateX, moonTransform.translateY, moonTransform.translateZ)
@@ -658,21 +654,30 @@ if (seatEntries.length > 0) {
                 this.renderer.resetState();
                 this.renderer.render(this.scene, this.camera);
                 
-                // 強制 Mapbox 逐幀重繪，讓月球保持轉動
                 this.map.triggerRepaint(); 
             }
         };
 
-        // 確保不會重複加入 Layer
         if (!map.getLayer('3d-moon-layer')) {
             map.addLayer(customMoonLayer);
         }
         
-        document.getElementById('btn-projection-toggle').innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
+        const btn = document.getElementById('btn-projection-toggle');
+        if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
         
-        triggerReactRender();
-            renderApp();
+        if (isAppInitialized) {
+            triggerReactRender();
         }
+    }); // 👈 就是這個結尾的 }); 被吃掉了，現在補回來了！
+
+    // 🔥 2D/3D 地圖投影切換引擎
+    window.toggleProjection = function() {
+        isGlobe = !isGlobe;
+        map.setProjection({ name: isGlobe ? 'globe' : 'equirectangular' });
+        map.flyTo({ pitch: isGlobe ? 45 : 0, duration: 1200 });
+        const btn = document.getElementById('btn-projection-toggle');
+        if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
+    };
     });
 
     function renderMapFeatures(stats) {
