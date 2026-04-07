@@ -436,8 +436,7 @@
             });
         };
         renderPolar('chart-takeoff', stats.takeoffStats, true); renderPolar('chart-landing', stats.landingStats, false);
-    }
-    // 年度趨勢
+        // 年度趨勢
 if(window.chart_yearly) window.chart_yearly.destroy();
 const yearlyCtx = document.getElementById('chart-yearly');
 if(yearlyCtx) {
@@ -513,6 +512,8 @@ if (seatEntries.length > 0) {
     ).join('');
     document.getElementById('stat-exit-row').innerText = stats.seatStats.exitRows;
 }
+    }
+    
 
     // 🔥 Modal Animation Engine
     // 🔥 Modal Animation Engine
