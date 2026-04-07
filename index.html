@@ -172,6 +172,7 @@
     let animationState = { startTime: 0, planes: [], isRunning: false };
     let isAppInitialized = false; // 防呆機制
     let isGlobe = true; // 控制 2D/3D 切換狀態
+    let isNightMode = false;
 
     // 🔥 導入 Framer Motion 原生版 (motion)
     let animate, stagger, spring;
@@ -565,7 +566,6 @@ if (seatEntries.length > 0) {
             duration: 1200 
         });
         // 🔥 地貌/夜景 一鍵切換引擎
-    let isNightMode = false;
     window.toggleNightMode = function() {
         isNightMode = !isNightMode;
         
@@ -576,9 +576,6 @@ if (seatEntries.length > 0) {
         
         const btn = document.getElementById('btn-night-toggle');
         if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
-    };
-        const btn = document.getElementById('btn-projection-toggle');
-        if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
     };
 
    // ==========================================
