@@ -631,6 +631,19 @@
         await saveFlight(payload, editingFlightId); btn.disabled = false; btn.innerText = '儲存 Save'; toggleModal('addFlightModal'); fetchFlights();
     };
     window.exportCSV = exportCSV; window.importCSV = importCSV;
+    function exportCSV() {
+    if (!flightsState.length) return alert('尚無資料');
+    const headers = ['flight_date','origin_code','dest_code','airline','flight_number','aircraft_type','takeoff_time','landing_time','seat_class','seat_type','seat','is_exit_row'];
+    const rows = flightsState.map(f => headers.map(h => `"${f[h]??''}"`).join(','));
+    const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'flights.csv'; a.click();
+}
+
+function importCSV(event) {
+    const file = event.target.files[0]; if (!file) return;
+    // 依你的需求實作匯入邏輯
+    alert('匯入功能尚未實作');
+}
 </script>
 </body>
 </html>
