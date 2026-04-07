@@ -72,8 +72,6 @@
             <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full">&times;</button>
         </div>
         
-        ```
-
         <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <div>
                 <div class="text-sm text-gray-400 font-bold mb-1">總飛行距離 Total Distance</div>
@@ -96,6 +94,26 @@
                 </div>
             </div>
         </div>
+        </div> <div class="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="bg-white/5 p-5 rounded-3xl flex flex-col justify-center items-center text-center">
+                <div class="text-xs text-gray-400 uppercase font-bold mb-2">🔁 重複航線佔比</div>
+                <div class="text-3xl font-black text-white"><span id="pp-rep-route">0</span><span class="text-lg text-gray-500">%</span></div>
+                <div class="text-[10px] text-gray-500 mt-1">走過的老路線</div>
+            </div>
+            <div class="bg-white/5 p-5 rounded-3xl flex flex-col justify-center items-center text-center">
+                <div class="text-xs text-gray-400 uppercase font-bold mb-2">📈 年均飛行次數</div>
+                <div class="text-3xl font-black text-white"><span id="pp-avg-flights">0</span><span class="text-lg text-gray-500"> 趟</span></div>
+                <div class="text-[10px] text-gray-500 mt-1">Average per year</div>
+            </div>
+            <div class="bg-white/5 p-5 rounded-3xl flex flex-col justify-center items-center text-center border border-sky-500/30">
+                <div class="text-xs text-sky-400 uppercase font-bold mb-2">🌍 跨越時區數</div>
+                <div class="text-3xl font-black text-white"><span id="pp-timezones">0</span><span class="text-lg text-gray-500"> TZ</span></div>
+                <div class="text-[10px] text-gray-500 mt-1">Timezones crossed</div>
+            </div>
+        </div>
+
+        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center">
         <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">起飛時段 Takeoff (24H)</div><div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-takeoff"></canvas></div></div>
             <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">降落時段 Landing (24H)</div><div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-landing"></canvas></div></div>
@@ -296,6 +314,9 @@
     // ==========================================
     // 2️⃣ Calculation Layer (計算層：純粹處理邏輯)
     // ==========================================
+    // ==========================================
+    // 2️⃣ Calculation Layer (計算層：純粹處理邏輯)
+    // ==========================================
     function calculateStats(flights) {
         let stats = {
             totalKm: 0, totalHours: 0, completedFlights: 0, domCount: 0, intCount: 0, longCount: 0,
@@ -304,7 +325,7 @@
             airportFlightsInfo: {}, airportStats: {}, 
             seatStats: { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 },
             yearlyDist: {}, monthlyCount: new Array(12).fill(0), takeoffStats: new Array(24).fill(0), landingStats: new Array(24).fill(0),
-            timeline: [], tripsCount: 0
+            timeline: [], tripsCount: 0, timezonesCrossed: 0 // 👈 新增變數
         };
 
         const validFlights = flights.filter(f => f.origin_code && f.dest_code && airportDB[f.origin_code] && airportDB[f.dest_code]);
@@ -354,6 +375,9 @@
             const infoStr = `${f.flight_date||''} ${f.airline||''}${f.flight_number||''} ${f.origin_code}✈️${f.dest_code}`;
             stats.airportFlightsInfo[f.origin_code].push(infoStr); stats.airportFlightsInfo[f.dest_code].push(infoStr);
 
+            // 🔥 邏輯：利用出發與目的地經度差 / 15，精算出跨越的時區數
+            stats.timezonesCrossed += Math.round(Math.abs(orig.coords[0] - dest.coords[0]) / 15);
+
             if (!f.routeCoords) {
                 const route = turf.greatCircle(orig.coords, dest.coords); const lineDistance = turf.length(route);
                 const maxHeight = Math.min(lineDistance * 200, 2000000); const arcCoords = [];
@@ -365,6 +389,18 @@
             }
             f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1); 
         });
+
+        // 🔥 邏輯：精算重複航線佔比與年均次數
+        const uniqueRoutes = Object.keys(stats.freq.routes).length;
+        stats.repeatedRoutePct = stats.completedFlights > 0 ? ((stats.completedFlights - uniqueRoutes) / stats.completedFlights * 100).toFixed(1) : 0;
+        
+        const flightYears = Object.keys(stats.yearlyDist).map(Number);
+        if (flightYears.length > 0) {
+            const span = Math.max(...flightYears) - Math.min(...flightYears) + 1;
+            stats.avgFlightsPerYear = (stats.completedFlights / span).toFixed(1);
+        } else {
+            stats.avgFlightsPerYear = 0;
+        }
 
         Object.entries(stats.airportStats).sort((a, b) => b[1].total - a[1].total).forEach((entry, idx) => { entry[1].rank = idx + 1; });
         return stats;
@@ -402,9 +438,12 @@
         const setTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
         setTxt('stat-dist', Math.round(stats.totalKm).toLocaleString()); setTxt('stat-flights', stats.completedFlights); setTxt('stat-trips', stats.tripsCount); 
         if(stats.completedFlights > 0) {
-            setTxt('sb-long-route', `${stats.longest.route} (${Math.round(stats.longest.dist)}km)`); setTxt('sb-short-route', `${stats.shortest.route} (${Math.round(stats.shortest.dist)}km)`);
-            setTxt('pp-short-route', stats.shortest.route); setTxt('pp-short-dist', `${Math.round(stats.shortest.dist).toLocaleString()} km`);
-            setTxt('pp-long-route', stats.longest.route); setTxt('pp-long-dist', `${Math.round(stats.longest.dist).toLocaleString()} km`);
+            setTxt('sb-long-route', `${stats.longest.route} (${Math.round(stats.longest.dist)}km)`);
+            if (document.getElementById('sb-short-route')) setTxt('sb-short-route', `${stats.shortest.route} (${Math.round(stats.shortest.dist)}km)`);
+            if (document.getElementById('pp-short-route')) setTxt('pp-short-route', stats.shortest.route);
+            if (document.getElementById('pp-short-dist')) setTxt('pp-short-dist', `${Math.round(stats.shortest.dist).toLocaleString()} km`);
+            if (document.getElementById('pp-long-route')) setTxt('pp-long-route', stats.longest.route); 
+            if (document.getElementById('pp-long-dist')) setTxt('pp-long-dist', `${Math.round(stats.longest.dist).toLocaleString()} km`);
         }
         setTxt('pp-dist', Math.round(stats.totalKm).toLocaleString());
         setTxt('pp-earth', (stats.totalKm / 40075).toFixed(1)); setTxt('pp-moon', (stats.totalKm / 384400).toFixed(2));
@@ -415,6 +454,11 @@
         document.getElementById('pp-time-main').innerHTML = `${Math.floor(stats.totalHours)}<span class="text-2xl text-gray-500">h</span> ${Math.round((stats.totalHours - Math.floor(stats.totalHours)) * 60)}<span class="text-2xl text-gray-500">m</span>`;
         setTxt('pp-days', (stats.totalHours / 24).toFixed(1)); setTxt('pp-avg-time', formatTimeString(avg)); setTxt('pp-in-air', formatTimeString(stats.totalHours));
         setTxt('pp-total-flights-box', stats.completedFlights); setTxt('pp-dom', stats.domCount); setTxt('pp-int', stats.intCount); setTxt('pp-long', stats.longCount);
+
+        // 🚀 將 3 項新進階數據輸出到對應的 HTML 標籤上
+        setTxt('pp-rep-route', stats.repeatedRoutePct);
+        setTxt('pp-avg-flights', stats.avgFlightsPerYear);
+        setTxt('pp-timezones', stats.timezonesCrossed);
     }
 
     function renderFlightList(timeline) {
