@@ -184,6 +184,11 @@
     let editingFlightId = null;
     let currentYearFilter = 'ALL';
     let animationState = { startTime: 0, planes: [], isRunning: false };
+    let airportDB = {}; 
+    let editingFlightId = null;
+    let currentYearFilter = 'ALL';
+    let animationState = { startTime: 0, planes: [], isRunning: false };
+    let isAppInitialized = false; // 👈 補上這行：防止地圖還沒拿到資料就偷跑渲染
 
     // 🔥 導入 Framer Motion 原生版 (motion)
     let animate, stagger, spring;
@@ -668,7 +673,7 @@ if (seatEntries.length > 0) {
         
         document.getElementById('btn-projection-toggle').innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
         
-        if (isAppInitialized) {
+        triggerReactRender();
             renderApp();
         }
     });
@@ -782,6 +787,7 @@ if (seatEntries.length > 0) {
         try {
             document.getElementById('db-status').innerText = '拉取航班...';
             await fetchFlights();
+            isAppInitialized = true;
             document.getElementById('db-status').innerText = '系統上線 Online';
             document.getElementById('db-status').className = 'text-xl font-black text-green-400 flex items-center gap-2';
             
