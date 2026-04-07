@@ -65,7 +65,7 @@
 </div>
 
 <div id="passportModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex justify-center p-4 overflow-y-auto">
-    <div class="flighty-panel modal-panel p-6 sm:p-10 rounded-[40px] w-full max-w-5xl shadow-2xl my-auto relative border border-white/10 opacity-0 scale-90">
+    <div class="flighty-panel modal-panel p-6 sm:py-10 sm:px-12 rounded-[40px] w-full max-w-6xl shadow-2xl my-auto relative border border-white/10 opacity-0 scale-90">
         
         <div class="relative z-10 flex justify-between items-center mb-10">
             <h2 class="text-3xl font-black tracking-tighter">我的飛行紀錄 My flight logs</h2>
@@ -108,15 +108,39 @@
             <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">艙等 Class</div><div id="chart-class" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常搭乘</span><span class="font-bold text-sm px-2" id="top-class-name">--</span></div></div><div id="legend-class" class="w-full space-y-1 text-xs"></div></div>
             <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">座位 Seat</div><div id="chart-seat" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常劃位</span><span class="font-bold text-sm" id="top-seat-name">--</span></div></div><div id="legend-seat" class="w-full space-y-1 text-xs"></div><div class="mt-4 pt-3 border-t w-full flex justify-between"><span class="text-gray-400">逃生門 Exit Row</span><span class="font-bold text-[#facc15]" id="stat-exit-row">0</span></div></div>
         </div>
-        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10">
-    ```
-            <div><div class="flex items-baseline gap-2 mb-4"><div class="text-3xl font-black" id="pp-total-aircraft">0</div><div class="text-gray-400 font-bold">機型 Top Aircraft</div></div><div id="list-aircraft" class="space-y-3"></div></div>
-            <div><div class="flex items-baseline gap-2 mb-4"><div class="text-3xl font-black" id="pp-total-airports">0</div><div class="text-gray-400 font-bold">機場 Top Airports</div></div><div id="list-airports" class="space-y-3"></div></div>
-            <div><div class="flex items-baseline gap-2 mb-4"><div class="text-3xl font-black" id="pp-total-airlines">0</div><div class="text-gray-400 font-bold">航空公司 Top Airlines</div></div><div id="list-airlines" class="space-y-3"></div></div>
-            <div><div class="flex items-baseline gap-2 mb-4"><div class="text-3xl font-black" id="pp-total-routes">0</div><div class="text-gray-400 font-bold">航線 Top Routes</div></div><div id="list-routes" class="space-y-3"></div></div>
+        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
+            <div>
+                <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
+                    <div class="text-3xl font-black text-white" id="pp-total-aircraft">0</div>
+                    <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">機型 Top Aircraft</div>
+                </div>
+                <div id="list-aircraft" class="space-y-3"></div>
+            </div>
+            
+            <div>
+                <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
+                    <div class="text-3xl font-black text-white" id="pp-total-airports">0</div>
+                    <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">機場 Top Airports</div>
+                </div>
+                <div id="list-airports" class="space-y-3"></div>
+            </div>
+            
+            <div>
+                <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
+                    <div class="text-3xl font-black text-white" id="pp-total-airlines">0</div>
+                    <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">航空公司 Top Airlines</div>
+                </div>
+                <div id="list-airlines" class="space-y-3"></div>
+            </div>
+            
+            <div>
+                <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
+                    <div class="text-3xl font-black text-white" id="pp-total-routes">0</div>
+                    <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">航線 Top Routes</div>
+                </div>
+                <div id="list-routes" class="space-y-3"></div>
+            </div>
         </div>
-    </div>
-</div>
 
 <div id="addFlightModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="glass-panel modal-panel p-8 rounded-3xl w-full max-w-md border border-white/20 overflow-y-auto max-h-[90vh] opacity-0 scale-90">
