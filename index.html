@@ -323,7 +323,7 @@
             if (!f.routeCoords) {
                 const route = turf.greatCircle(orig.coords, dest.coords); const lineDistance = turf.length(route);
                 const maxHeight = Math.min(lineDistance * 200, 2000000); const arcCoords = [];
-                for (let d = 0; d <= lineDistance; d += lineDistance / 250) {
+                 for (let d = 0; d <= lineDistance; d += lineDistance / 250) {
                     let pt = turf.along(route, d).geometry.coordinates; let h = Math.sin((d / lineDistance) * Math.PI) * maxHeight;
                     arcCoords.push([pt[0], pt[1], h]); 
                 }
@@ -593,26 +593,58 @@ if (seatEntries.length > 0) {
             const elContainer = document.createElement('div'); const planeIcon = document.createElement('div');
             planeIcon.innerHTML = '✈️'; planeIcon.style.fontSize = '18px'; planeIcon.style.transition = 'transform 0.1s linear'; elContainer.appendChild(planeIcon);
             const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(f.routeCoords[0]).addTo(map);
-            animationState.planes.push({ id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords, finished: false, step: 1 });
+            const actualHours = f.flight_hours || ((f.distance / 850) + 0.5);
+            animationState.planes.push({ id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords, flightHours: actualHours, finished: false, startTime: null });
         });
 
         if(!animationState.isRunning) { animationState.isRunning = true; requestAnimationFrame(globalAnimationLoop); }
     }
 
-    // 🔥 接力飛行引擎 (一架降落，下一架起飛)
-    function globalAnimationLoop() {
+   // 🔥 時間比例尺設定：1 小時飛行時間 = 畫面上幾毫秒 (800ms 代表 1小時飛 0.8秒)
+    const TIME_SCALE = 800; 
+
+    function globalAnimationLoop(timestamp) {
         let currentIndex = animationState.planes.findIndex(p => !p.finished);
         if (currentIndex === -1) { animationState.isRunning = false; return; }
+        
         let p = animationState.planes[currentIndex];
 
-        if (p.step < p.coords.length) {
-            if(map.getSource(p.id)) map.getSource(p.id).setData({ 'type': 'FeatureCollection', 'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords.slice(0, p.step + 1) } } ] });
-            const bearing = turf.bearing(p.coords[p.step - 1], p.coords[p.step]);
-            p.marker.setLngLat(p.coords[p.step]); p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
-            p.step++; 
-        } else {
-            p.finished = true; p.marker.remove(); 
+        // 1. 初始化該航班的起飛時間戳
+        if (!p.startTime) p.startTime = timestamp;
+
+        // 2. 精算絕對進度百分比 (0.0 到 1.0)
+        const totalDurationMs = p.flightHours * TIME_SCALE;
+        let progress = (timestamp - p.startTime) / totalDurationMs;
+        if (progress > 1) progress = 1;
+
+        // 3. 將進度百分比映射到 3D 座標陣列的 index
+        const maxIndex = p.coords.length - 1;
+        const currentStep = Math.floor(progress * maxIndex);
+
+        if (currentStep > 0) {
+            // 更新航線軌跡
+            if(map.getSource(p.id)) {
+                map.getSource(p.id).setData({ 
+                    'type': 'FeatureCollection', 
+                    'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords.slice(0, currentStep + 1) } } ] 
+                });
+            }
+            
+            // 計算機頭動態轉向與平滑位移
+            const p1 = p.coords[currentStep - 1];
+            const p2 = p.coords[currentStep];
+            const bearing = turf.bearing(p1, p2);
+            
+            p.marker.setLngLat(p2); 
+            p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
         }
+
+        // 4. 判斷是否抵達終點 (無縫交接給下一架)
+        if (progress >= 1) {
+            p.finished = true; 
+            p.marker.remove(); 
+        }
+        
         requestAnimationFrame(globalAnimationLoop);
     }
 
