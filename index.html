@@ -553,7 +553,7 @@ if (seatEntries.length > 0) {
             setTimeout(() => content.classList.add('hidden'), 500); 
         }
     };
-    // 🔥 2D/3D 地圖投影切換引擎 (已移除重複宣告的 let isGlobe)
+    // 🔥 2D/3D 地圖投影切換引擎
     window.toggleProjection = function() {
         isGlobe = !isGlobe;
         
@@ -565,12 +565,16 @@ if (seatEntries.length > 0) {
             pitch: isGlobe ? 45 : 0, 
             duration: 1200 
         });
-        // 🔥 地貌/夜景 一鍵切換引擎
+        
+        const btn = document.getElementById('btn-projection-toggle');
+        if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
+    }; // 👈 兇手就是它！你原本的程式碼在這裡漏掉了 `};`
+
+    // 🔥 地貌/夜景 一鍵切換引擎
     window.toggleNightMode = function() {
         isNightMode = !isNightMode;
         
         if (map.getLayer('nasa-black-marble-layer')) {
-            // 直接切換圖層的能見度
             map.setLayoutProperty('nasa-black-marble-layer', 'visibility', isNightMode ? 'visible' : 'none');
         }
         
@@ -583,8 +587,7 @@ if (seatEntries.length > 0) {
     // ==========================================
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
 
-    // 🚨 每次 Style 載入完畢後，掛上星空、NASA Black Marble 與自訂 WebGL 月球
-    // 🚨 每次 Style 載入完畢後，重新掛上 NASA 燈光網 (捨棄不相容的 WebGL 月球)
+    // 🚨 每次 Style 載入完畢後，重新掛上 NASA 燈光網
     map.on('style.load', () => {
         map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
 
@@ -601,11 +604,11 @@ if (seatEntries.length > 0) {
                 'type': 'raster',
                 'source': 'nasa-black-marble',
                 'paint': {
-                    'raster-opacity': 1.0, // 滿血輸出不疊加
+                    'raster-opacity': 1.0, 
                     'raster-contrast': 0.1
                 },
                 'layout': {
-                    'visibility': 'none' // 👈 關鍵：預設隱藏，等玩家按按鈕
+                    'visibility': 'none' 
                 }
             });
         }
@@ -620,15 +623,6 @@ if (seatEntries.length > 0) {
             triggerReactRender();
         }
     });
-
-        const btn = document.getElementById('btn-projection-toggle');
-        if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
-        
-        if (isAppInitialized) {
-            triggerReactRender();
-        }
-         
-    function renderMapFeatures(stats) {
         // --- 1. Airports ---
         let airFeats = [];
         for (let [code, count] of Object.entries(stats.freq.airports)) {
