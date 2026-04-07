@@ -582,7 +582,7 @@ if (seatEntries.length > 0) {
         if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
     };
 
-   // ==========================================
+// ==========================================
     // 4️⃣ Map Layer (地圖與單一渲染引擎)
     // ==========================================
     const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
@@ -591,7 +591,6 @@ if (seatEntries.length > 0) {
     map.on('style.load', () => {
         map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
 
-        // 加入 NASA Black Marble，並設為「預設隱藏 (none)」
         if (!map.getSource('nasa-black-marble')) {
             map.addSource('nasa-black-marble', {
                 'type': 'raster',
@@ -603,13 +602,8 @@ if (seatEntries.length > 0) {
                 'id': 'nasa-black-marble-layer',
                 'type': 'raster',
                 'source': 'nasa-black-marble',
-                'paint': {
-                    'raster-opacity': 1.0, 
-                    'raster-contrast': 0.1
-                },
-                'layout': {
-                    'visibility': 'none' 
-                }
+                'paint': { 'raster-opacity': 1.0, 'raster-contrast': 0.1 },
+                'layout': { 'visibility': 'none' }
             });
         }
         
@@ -623,6 +617,9 @@ if (seatEntries.length > 0) {
             triggerReactRender();
         }
     });
+
+    // 🚨 這裡就是你遺失的函數開頭！現在補回來了！
+    function renderMapFeatures(stats) {
         // --- 1. Airports ---
         let airFeats = [];
         for (let [code, count] of Object.entries(stats.freq.airports)) {
@@ -666,7 +663,7 @@ if (seatEntries.length > 0) {
         });
 
         if(!animationState.isRunning) { animationState.isRunning = true; requestAnimationFrame(globalAnimationLoop); }
-    
+    }
 
    // 🔥 時間比例尺設定：1 小時飛行時間 = 畫面上幾毫秒 (800ms 代表 1小時飛 0.8秒)
     const TIME_SCALE = 800; 
