@@ -567,8 +567,7 @@ if (seatEntries.length > 0) {
             setTimeout(() => content.classList.add('hidden'), 500); 
         }
     };
-    // 🔥 2D/3D 地圖投影切換引擎
-    let isGlobe = true;
+    // 🔥 2D/3D 地圖投影切換引擎 (已移除重複宣告的 let isGlobe)
     window.toggleProjection = function() {
         isGlobe = !isGlobe;
         
