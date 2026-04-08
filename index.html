@@ -730,58 +730,73 @@ if (seatEntries.length > 0) {
             planeIcon.innerHTML = '✈️'; planeIcon.style.fontSize = '18px'; planeIcon.style.transition = 'transform 0.1s linear'; elContainer.appendChild(planeIcon);
             const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(f.routeCoords[0]).addTo(map);
             const actualHours = f.flight_hours || ((f.distance / 850) + 0.5);
-            animationState.planes.push({ id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords, flightHours: actualHours, finished: false, startTime: null });
+            
+            // 🚨 關鍵修改：移除 finished 屬性（因為不會結束），只保留 startTime
+            animationState.planes.push({ 
+                id: routeId, 
+                marker: planeMarker, 
+                icon: planeIcon, 
+                coords: f.routeCoords, 
+                flightHours: actualHours, 
+                // finished: false, // 👈 移除這行
+                startTime: null 
+            });
         });
 
-        if(!animationState.isRunning) { animationState.isRunning = true; requestAnimationFrame(globalAnimationLoop); }
+        if(!animationState.isRunning) { 
+            animationState.isRunning = true; 
+            requestAnimationFrame(globalAnimationLoop); 
+        }
     }
 
    // 🔥 時間比例尺設定：1 小時飛行時間 = 畫面上幾毫秒 (800ms 代表 1小時飛 0.8秒)
     const TIME_SCALE = 800; 
 
     function globalAnimationLoop(timestamp) {
-        let currentIndex = animationState.planes.findIndex(p => !p.finished);
-        if (currentIndex === -1) { animationState.isRunning = false; return; }
-        
-        let p = animationState.planes[currentIndex];
+        // 🔥 邏輯：遍歷所有飛機，並單獨更新它們
+        for (let i = 0; i < animationState.planes.length; i++) {
+            let p = animationState.planes[i];
 
-        // 1. 初始化該航班的起飛時間戳
-        if (!p.startTime) p.startTime = timestamp;
+            // 1. 初始化該航班的起飛時間戳
+            if (!p.startTime) p.startTime = timestamp;
 
-        // 2. 精算絕對進度百分比 (0.0 到 1.0)
-        const totalDurationMs = p.flightHours * TIME_SCALE;
-        let progress = (timestamp - p.startTime) / totalDurationMs;
-        if (progress > 1) progress = 1;
-
-        // 3. 將進度百分比映射到 3D 座標陣列的 index
-        const maxIndex = p.coords.length - 1;
-        const currentStep = Math.floor(progress * maxIndex);
-
-        if (currentStep > 0) {
-            // 更新航線軌跡
-            if(map.getSource(p.id)) {
-                map.getSource(p.id).setData({ 
-                    'type': 'FeatureCollection', 
-                    'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords.slice(0, currentStep + 1) } } ] 
-                });
+            // 2. 精算絕對進度百分比 (0.0 到 1.0)
+            const totalDurationMs = p.flightHours * TIME_SCALE;
+            let progress = (timestamp - p.startTime) / totalDurationMs;
+            
+            // 🚨 關鍵修改：當進度超過 1 時，利用取餘數 (%) 運算子，使其無限循環
+            if (progress >= 1) {
+                p.startTime = timestamp - (timestamp - p.startTime - totalDurationMs); // 修正誤差，保持流暢
+                progress = progress % 1; // 進度回到 0.xxx
             }
-            
-            // 計算機頭動態轉向與平滑位移
-            const p1 = p.coords[currentStep - 1];
-            const p2 = p.coords[currentStep];
-            const bearing = turf.bearing(p1, p2);
-            
-            p.marker.setLngLat(p2); 
-            p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
+
+            // 3. 將進度百分比映射到 3D 座標陣列的 index
+            const maxIndex = p.coords.length - 1;
+            const currentStep = Math.floor(progress * maxIndex);
+
+            if (currentStep > 0) {
+                // 更新航線軌跡 (只顯示已經飛過的路徑)
+                if(map.getSource(p.id)) {
+                    map.getSource(p.id).setData({ 
+                        'type': 'FeatureCollection', 
+                        'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords.slice(0, currentStep + 1) } } ] 
+                    });
+                }
+                
+                // 計算機頭動態轉向與平滑位移
+                const p1 = p.coords[currentStep - 1];
+                const p2 = p.coords[currentStep];
+                const bearing = turf.bearing(p1, p2);
+                
+                p.marker.setLngLat(p2); 
+                p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
+            }
         }
 
-        // 4. 判斷是否抵達終點 (無縫交接給下一架)
-        if (progress >= 1) {
-            p.finished = true; 
-            p.marker.remove(); 
+        // 🚨 關鍵修改：移除「無縫交接」判斷，讓動畫永不停止
+        if (animationState.isRunning) {
+            requestAnimationFrame(globalAnimationLoop);
         }
-        
-        requestAnimationFrame(globalAnimationLoop);
     }
 
     window.focusFlightRoute = function(routeId, origin, dest) {
