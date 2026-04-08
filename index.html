@@ -552,32 +552,32 @@
         }
 
         function renderFlightList(timeline) {
-            document.getElementById('flight-list').innerHTML = timeline.map((f, i) => {
-                const logo = getAirlineLogoUrl(f.airline); 
-                const display = f.airline ? (logo ? `<img src="${logo}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
-                return `
-                    <div class="flight-card bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 cursor-pointer opacity-0" onclick="window.focusFlightRoute('r-${i}', '${f.origin_code}', '${f.dest_code}')">
-                        ${display} 
-                        <div class="flex-1 min-w-0">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <span class="font-bold truncate">${f.origin_code} ✈️ ${f.dest_code}</span>
-                                <div class="flex items-center gap-1 shrink-0 ml-2">
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 font-bold mr-1">ID: ${f.id}</span>
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date ? f.flight_date.substring(0,4) : ''}</span>
-                                    <button onclick="event.stopPropagation(); window.editFlight(${f.id})" class="opacity-50 hover:opacity-100 text-xs ml-1">✏️</button>
-                                    <button onclick="event.stopPropagation(); window.deleteFlightHandler(${f.id})" class="opacity-50 hover:opacity-100 text-xs ml-1">🗑️</button>
-                                </div>
+        document.getElementById('flight-list').innerHTML = timeline.map((f, i) => {
+            const logo = getAirlineLogoUrl(f.airline); 
+            const display = f.airline ? (logo ? `<img src="${logo}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
+            return `
+                <div class="flight-card bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 cursor-pointer opacity-0" onclick="window.focusFlightRoute('r-${i}', '${f.origin_code}', '${f.dest_code}')">
+                    ${display} 
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center mb-0.5">
+                            <span class="font-bold truncate">${f.origin_code} ✈️ ${f.dest_code}</span>
+                            <div class="flex items-center gap-1 shrink-0 ml-2">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 font-bold mr-1">ID: ${f.id}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date ? f.flight_date.substring(0,4) : ''}</span>
+                                <button onclick="event.stopPropagation(); window.editFlight('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">✏️</button>
+                                <button onclick="event.stopPropagation(); window.deleteFlightHandler('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">🗑️</button>
                             </div>
-                            <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${formatTimeString(f.flight_hours)} · ${Math.round(f.distance)}km</div>
                         </div>
-                    </div>`;
-            }).join('');
+                        <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${formatTimeString(f.flight_hours)} · ${Math.round(f.distance)}km</div>
+                    </div>
+                </div>`;
+        }).join('');
 
-            // 🔥 Framer Motion: List Stagger Animation
-            if (animate && stagger) {
-                animate(".flight-card", { x: [-30, 0], opacity: [0, 1] }, { delay: stagger(0.05), duration: 0.4, easing: "ease-out" });
-            }
+        // 🔥 Framer Motion: List Stagger Animation
+        if (animate && stagger) {
+            animate(".flight-card", { x: [-30, 0], opacity: [0, 1] }, { delay: stagger(0.05), duration: 0.4, easing: "ease-out" });
         }
+    }
 
         function renderChartsAndLists(stats) {
             const renderList = (data, id, colorCls, isLogo=false) => {
@@ -908,11 +908,23 @@
         }
 
         window.focusFlightRoute = function(routeId, origin, dest) {
+        try {
+            const o = airportDB[origin];
+            const d = airportDB[dest];
+            
+            // 🚀 修正：如果機場座標有瑕疵，直接放棄運鏡，保護系統不崩潰
+            if (!o || !d || !o.coords || !d.coords) return;
+            
             if (map.getStyle()) map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-') && l.id.endsWith('-line')) map.setPaintProperty(l.id, 'line-width', 3); });
             if (map.getLayer(`${routeId}-line`)) map.setPaintProperty(`${routeId}-line`, 'line-width', 8); 
-            map.flyTo({ center: turf.midpoint(turf.point(airportDB[origin].coords), turf.point(airportDB[dest].coords)).geometry.coordinates, zoom: 4, duration: 1500 });
+            
+            // 強制包裝成 turf.point 特徵，確保 Turf.js 計算中點時萬無一失
+            map.flyTo({ center: turf.midpoint(turf.point(o.coords), turf.point(d.coords)).geometry.coordinates, zoom: 4, duration: 1500 });
+            
+        } catch (e) {
+            console.warn('無法聚焦此航線', e);
         }
-
+    }
         // ==========================================
         // Controller & UI Actions
         // ==========================================
@@ -958,15 +970,21 @@
         window.openAddModal = () => { editingFlightId = null; document.getElementById('flightForm').reset(); document.getElementById('submitBtn').innerText = '儲存 Save'; document.querySelector('#addFlightModal h2').innerText = '新增航班 Add Flight'; toggleModal('addFlightModal'); };
         window.deleteFlightHandler = async (id) => { if(await deleteFlight(id)) fetchFlights(); };
         window.editFlight = (id) => {
-            const f = flightsState.find(f => f.id === id); if(!f) return; editingFlightId = id; 
-            const sVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
-            sVal('inp-date', f.flight_date); sVal('inp-takeoff', f.takeoff_time); sVal('inp-landing', f.landing_time);
-            sVal('inp-origin', f.origin_code); sVal('inp-dest', f.dest_code); sVal('inp-airline', f.airline); sVal('inp-flight-number', f.flight_number); sVal('inp-type', f.aircraft_type);
-            sVal('inp-seat-class', f.seat_class); sVal('inp-seat-type', f.seat_type); sVal('inp-seat', f.seat);
-            const exitRowEl = document.getElementById('inp-exit-row'); if(exitRowEl) exitRowEl.checked = f.is_exit_row || false;
-            document.getElementById('submitBtn').innerText = '更新 Update'; document.querySelector('#addFlightModal h2').innerText = '編輯航班 Edit Flight';
-            toggleModal('addFlightModal');
-        };
+        // 🚀 修正：強制轉換成 String 比對，防止 UUID 字串與數字的型別衝突
+        const f = flightsState.find(f => String(f.id) === String(id)); 
+        if(!f) return; 
+        
+        editingFlightId = f.id; // 保持原本的真實 ID
+        const sVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+        sVal('inp-date', f.flight_date); sVal('inp-takeoff', f.takeoff_time); sVal('inp-landing', f.landing_time);
+        sVal('inp-origin', f.origin_code); sVal('inp-dest', f.dest_code); sVal('inp-airline', f.airline); sVal('inp-flight-number', f.flight_number); sVal('inp-type', f.aircraft_type);
+        sVal('inp-seat-class', f.seat_class); sVal('inp-seat-type', f.seat_type); sVal('inp-seat', f.seat);
+        const exitRowEl = document.getElementById('inp-exit-row'); if(exitRowEl) exitRowEl.checked = f.is_exit_row || false;
+        
+        document.getElementById('submitBtn').innerText = '更新 Update'; 
+        document.querySelector('#addFlightModal h2').innerText = '編輯航班 Edit Flight';
+        toggleModal('addFlightModal');
+    };
         window.openAddModal = () => { editingFlightId = null; document.getElementById('flightForm').reset(); document.getElementById('submitBtn').innerText = '儲存 Save'; document.querySelector('#addFlightModal h2').innerText = '新增航班 Add Flight'; toggleModal('addFlightModal'); };
         window.deleteFlightHandler = async (id) => { if(await deleteFlight(id)) fetchFlights(); };
         window.editFlight = (id) => {
