@@ -217,7 +217,7 @@
                 <div class="flex gap-2">
                     <input type="text" id="csv-flight-id" placeholder="填入航班資料庫 ID" class="w-1/3 bg-[#1e1e20] border border-sky-500/30 rounded px-2 py-2 text-xs text-white">
                     <label class="w-2/3 bg-sky-500/20 hover:bg-sky-500/40 text-sky-400 border border-sky-500/50 font-bold py-2 rounded-lg text-xs transition-colors cursor-pointer text-center flex items-center justify-center">
-                        📂 選擇 CSV 並上傳軌跡
+                        <span id="csv-upload-btn-text">📂 選擇 CSV 並上傳</span>
                         <input type="file" id="track-csv-upload" accept=".csv" class="hidden" onchange="processCSVTrack(event)">
                     </label>
                 </div>
@@ -1208,79 +1208,100 @@
             }
         };
         // ==========================================
-        // 📂 本地 CSV 歷史軌跡解析與上傳引擎 (暴力破解防彈版)
-        // ==========================================
-        window.processCSVTrack = function(event) {
-            const flightId = document.getElementById('csv-flight-id').value;
-            if (!flightId) {
-                alert('❌ 請先填寫左側的航班 ID！(可在「近期日誌」的紅色標籤找到)');
-                event.target.value = ''; // 清空檔案選擇
-                return;
-            }
+    // 📂 本地 CSV 歷史軌跡解析與上傳引擎 (終極防彈版)
+    // ==========================================
+    window.processCSVTrack = function(event) {
+        const fileInput = event.target;
+        // 🚀 關鍵修復：加入 .trim() 強制消除手機輸入法自作聰明加上的空白字元
+        const flightId = document.getElementById('csv-flight-id').value.trim();
+        
+        if (!flightId) {
+            alert('❌ 請先填寫左側的航班 ID！(可在「近期日誌」的紅色標籤找到)');
+            fileInput.value = ''; // 清空檔案選擇
+            return;
+        }
 
-            const file = event.target.files[0];
-            if (!file) return;
+        const file = fileInput.files[0];
+        if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const text = e.target.result;
-                    const lines = text.split('\n');
-                    const coords = [];
+        // 只替換文字 span，保護背後的 input 不被摧毀
+        const btnTextEl = document.getElementById('csv-upload-btn-text');
+        if (btnTextEl) btnTextEl.innerText = '⏳ 解析與寫入中...';
 
-                    for (let i = 1; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (!line) continue;
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                const coords = [];
 
-                        // 🚨 暴力正則：無視所有引號、逗號亂局，直接抓取連續的兩個小數點數字 (緯度,經度)
-                        const match = line.match(/(-?\d+\.\d+)[^\d-]+(-?\d+\.\d+)/);
-                        if (match) {
-                            const lat = parseFloat(match[1]);
-                            const lon = parseFloat(match[2]);
-                            
-                            // 防呆：確保數字在合理的地球經緯度範圍內
-                            if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-                                coords.push([lon, lat]); // Mapbox 需要 [經度, 緯度]
-                            }
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    let lat = null, lon = null, alt = 0;
+
+                    // 策略 1：針對 Flightradar24 原生雙引號格式 ("Lat,Lon")
+                    const parts = line.split('"');
+                    if (parts.length >= 3) {
+                        const posParts = parts[1].split(',');
+                        if (posParts.length >= 2) {
+                            lat = parseFloat(posParts[0]);
+                            lon = parseFloat(posParts[1]);
+                        }
+                        const restParts = parts[2].split(',');
+                        if (restParts.length > 1) alt = parseFloat(restParts[1]) || 0;
+                    } 
+                    // 策略 2：備用暴力解析 (防止被 Excel 開啟後破壞了引號)
+                    else {
+                        const nums = line.match(/-?\d+\.\d+/g);
+                        if (nums && nums.length >= 2) {
+                            lat = parseFloat(nums[0]);
+                            lon = parseFloat(nums[1]);
                         }
                     }
 
-                    if (coords.length < 2) {
-                        throw new Error("找不到有效的座標。請確認這是包含經緯度的標準軌跡 CSV。");
+                    // 驗證地球絕對座標，避免垃圾資料污染地圖
+                    if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
+                        if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                            coords.push([lon, lat, alt]); 
+                        }
                     }
-
-                    const geojson = { 
-                        type: 'LineString', 
-                        coordinates: coords 
-                    };
-
-                    const btnLabel = event.target.parentElement;
-                    const originalText = btnLabel.innerHTML;
-                    btnLabel.innerHTML = '⏳ 寫入資料庫...';
-
-                    // 更新資料庫
-                    const { error, data } = await supabaseClient
-                        .from('flights')
-                        .update({ route_geojson: geojson })
-                        .eq('id', flightId)
-                        .select(); // 👈 強制要求回傳，以確認是否真的寫入成功
-
-                    if (error) throw error;
-                    if (!data || data.length === 0) throw new Error(`資料庫找不到 ID 為 ${flightId} 的航班，請確認輸入是否正確！`);
-
-                    btnLabel.innerHTML = originalText;
-                    alert(`🎉 成功解析 ${coords.length} 個軌跡點並永久儲存！地圖即將重整`);
-                    fetchFlights(); // 重新拉取資料重繪
-
-                } catch(err) {
-                    console.error(err);
-                    alert('❌ 處理失敗: ' + err.message);
-                    event.target.parentElement.innerHTML = '📂 選擇 CSV 並上傳軌跡 <input type="file" id="track-csv-upload" accept=".csv" class="hidden" onchange="processCSVTrack(event)">';
                 }
-            };
-            
-            reader.readAsText(file);
+
+                if (coords.length < 2) {
+                    throw new Error("解析失敗：找不到足夠的經緯度座標。請確保檔案是正確的 CSV！");
+                }
+
+                const geojson = { type: 'LineString', coordinates: coords };
+
+                // 寫入 Supabase，並強制要求回傳結果 (select) 來確認是否命中 ID
+                const { error, data } = await supabaseClient
+                    .from('flights')
+                    .update({ route_geojson: geojson })
+                    .eq('id', flightId)
+                    .select(); 
+
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    throw new Error(`資料庫中找不到 ID 為 [ ${flightId} ] 的航班！請檢查數字是否打錯。`);
+                }
+
+                alert(`🎉 成功解析 ${coords.length} 個軌跡點並永久儲存！地圖即將重整`);
+                fetchFlights(); 
+
+            } catch(err) {
+                console.error(err);
+                alert('❌ 上傳失敗: ' + err.message);
+            } finally {
+                // 恢復按鈕狀態，並重置 input 讓你可以連續點擊上傳
+                if (btnTextEl) btnTextEl.innerText = '📂 選擇 CSV 並上傳';
+                fileInput.value = ''; 
+            }
         };
+        
+        reader.readAsText(file);
+    };
     </script>
     </body>
     </html>
