@@ -34,6 +34,11 @@
         </div>
         <div class="h-8 w-px bg-white/20 mx-2"></div>
         <button onclick="toggleNightMode()" id="btn-night-toggle" class="text-xs font-bold text-yellow-400 hover:text-white transition-colors">切換夜景燈光</button>
+        <div class="h-8 w-px bg-white/20 mx-2"></div>
+        
+        <button onclick="toggleFleetRadar()" id="btn-fleet-radar" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">🛸 啟動全機隊雷達</button>
+        
+        <button onclick="toggleNightMode()" id="btn-night-toggle" class="text-xs font-bold text-yellow-400 hover:text-white transition-colors">切換夜景燈光</button>
         <button onclick="toggleProjection()" id="btn-projection-toggle" class="text-xs font-bold text-sky-400 hover:text-white transition-colors">切換平面 2D</button>
         <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">匯出 CSV</button>
         <label class="text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer">
@@ -377,7 +382,11 @@
 
             stats.timezonesCrossed += Math.round(Math.abs(orig.coords[0] - dest.coords[0]) / 15);
 
-            if (!f.routeCoords) {
+            // 🔥 優先使用資料庫中儲存的真實歷史軌跡 (GeoJSON)，若無才用模擬的大圓航線
+            if (f.route_geojson && f.route_geojson.coordinates) {
+                f.routeCoords = f.route_geojson.coordinates;
+                f.distance = turf.length(f.route_geojson, {units: 'kilometers'}); // 依照真實軌跡更新準確距離
+            } else if (!f.routeCoords) {
                 const route = turf.greatCircle(orig.coords, dest.coords); const lineDistance = turf.length(route);
                 const maxHeight = Math.min(lineDistance * 200, 2000000); const arcCoords = [];
                  for (let d = 0; d <= lineDistance; d += lineDistance / 250) {
@@ -386,7 +395,7 @@
                 }
                 arcCoords.push([dest.coords[0], dest.coords[1], 0]); f.routeCoords = arcCoords;
             }
-            f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1); 
+            f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1);
         });
 
         // 🔥 利用單向航線計算，精準剔除單純的來回航班
@@ -921,6 +930,176 @@ function importCSV(event) {
     // 依你的需求實作匯入邏輯
     alert('匯入功能尚未實作');
 }
+// ==========================================
+    // 🛸 私人歷史機隊雷達引擎 (純本地計算，永遠存在)
+    // ==========================================
+    let fleetAnimationId = null;
+    let isFleetRadarOn = false;
+    let fleetPlanes = [];
+
+    window.toggleFleetRadar = function() {
+        isFleetRadarOn = !isFleetRadarOn;
+        const btn = document.getElementById('btn-fleet-radar');
+
+        if (isFleetRadarOn) {
+            btn.innerHTML = '🟢 關閉機隊雷達';
+            btn.classList.replace('text-gray-300', 'text-green-400');
+            startFleetRadar();
+        } else {
+            btn.innerHTML = '🛸 啟動全機隊雷達';
+            btn.classList.replace('text-green-400', 'text-gray-300');
+            stopFleetRadar();
+        }
+    };
+
+    function startFleetRadar() {
+        stopFleetRadar(); // 確保不重複執行
+        fleetPlanes = [];
+
+        // 建立專屬的淡淡航線圖層
+        if (!map.getSource('fleet-routes')) {
+            map.addSource('fleet-routes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addLayer({
+                'id': 'fleet-routes-layer',
+                'type': 'line',
+                'source': 'fleet-routes',
+                'paint': { 'line-color': '#38bdf8', 'line-width': 1, 'line-opacity': 0.2 } // 淡淡的天藍色軌跡
+            });
+        }
+
+        // 收集你所有的歷史有效航班
+        const validFlights = flightsState.filter(f => f.origin_code && f.dest_code && airportDB[f.origin_code] && airportDB[f.dest_code]);
+        const routeFeatures = [];
+
+        validFlights.forEach((f) => {
+            const orig = airportDB[f.origin_code];
+            const dest = airportDB[f.dest_code];
+            
+            // 數學計算：大圓航線軌跡點
+            const route = turf.greatCircle(orig.coords, dest.coords);
+            const lineDistance = turf.length(route);
+            const coords = [];
+            for (let d = 0; d <= lineDistance; d += lineDistance / 250) {
+                coords.push(turf.along(route, d).geometry.coordinates);
+            }
+            coords.push(dest.coords);
+            routeFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+
+            // 創造 DOM 飛機圖示
+            const el = document.createElement('div');
+            el.innerHTML = '✈️';
+            el.style.fontSize = '14px';
+            el.style.transition = 'transform 0s'; // 關閉 CSS 過渡，由 JS 全權接管高更新率
+            
+            // 賦予每架飛機專屬 Popup (點擊查看歷史航班資訊)
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                new mapboxgl.Popup({ closeButton: false })
+                    .setLngLat(orig.coords) // 會隨動態更新
+                    .setHTML(`
+                        <div class="min-w-[150px]">
+                            <div class="font-black text-lg text-sky-400">${f.airline || ''} ${f.flight_number || ''}</div>
+                            <div class="text-[10px] text-gray-400 border-b border-white/10 pb-1 mb-2">${f.flight_date || 'Unknown Date'}</div>
+                            <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+                                <div class="text-gray-500">Route</div><div class="text-right text-white">${f.origin_code} ✈️ ${f.dest_code}</div>
+                                <div class="text-gray-500">Distance</div><div class="text-right text-white">${Math.round(lineDistance)} km</div>
+                            </div>
+                        </div>
+                    `).addTo(map);
+            });
+
+            const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
+
+            // 隨機打亂每架飛機的出發進度，製造「滿天飛舞」的錯覺
+            const duration = ((lineDistance / 850) + 0.5) * 800; // 統一速度基準
+            fleetPlanes.push({ marker: marker, el: el, coords: coords, duration: duration, progress: Math.random() });
+        });
+
+        // 渲染所有淡淡的歷史航線
+        map.getSource('fleet-routes').setData({ type: 'FeatureCollection', features: routeFeatures });
+
+        // 啟動專屬高效能獨立循環
+        let lastTime = performance.now();
+        function renderFleet(time) {
+            const delta = time - lastTime;
+            lastTime = time;
+
+            fleetPlanes.forEach(p => {
+                p.progress += delta / p.duration;
+                if (p.progress >= 1) p.progress = 0; // 無限循環
+
+                const maxIndex = p.coords.length - 1;
+                const step = p.progress * maxIndex;
+                const idx = Math.floor(step);
+                const nextIdx = Math.min(idx + 1, maxIndex);
+
+                if (idx < maxIndex) {
+                    const p1 = p.coords[idx];
+                    const p2 = p.coords[nextIdx];
+                    const bearing = turf.bearing(p1, p2);
+                    
+                    p.marker.setLngLat(p1);
+                    p.el.style.transform = `rotate(${bearing - 45}deg)`;
+                }
+            });
+            fleetAnimationId = requestAnimationFrame(renderFleet);
+        }
+        fleetAnimationId = requestAnimationFrame(renderFleet);
+    }
+
+    function stopFleetRadar() {
+        if (fleetAnimationId) cancelAnimationFrame(fleetAnimationId);
+        fleetPlanes.forEach(p => p.marker.remove());
+        fleetPlanes = [];
+        if (map.getSource('fleet-routes')) {
+            map.getSource('fleet-routes').setData({ type: 'FeatureCollection', features: [] });
+        }
+    }
+    // ==========================================
+    // 💾 真實歷史軌跡下載與永久保存引擎
+    // ==========================================
+    // 💡 使用方式：在瀏覽器 Console 執行 downloadAndSaveTrack(你的航班ID, '飛機ICAO24', Unix時間戳);
+    // 範例：downloadAndSaveTrack(15, '8990e9', 1680000000);
+    
+    window.downloadAndSaveTrack = async function(flightId, icao24, unixTime) {
+        try {
+            console.log(`📡 開始向 OpenSky 請求 ${icao24} 的歷史軌跡...`);
+            
+            // 呼叫 OpenSky 歷史軌跡 API
+            const res = await fetch(`https://opensky-network.org/api/tracks/all?icao24=${icao24.toLowerCase()}&time=${unixTime}`);
+            if (!res.ok) throw new Error('API 拒絕存取 (可能超出免費帳號的時間限制，或無此飛機資料)');
+            const data = await res.json();
+
+            console.log('✅ 成功取得軌跡資料，準備轉換格式...');
+
+            // OpenSky 回傳格式: path: [[time, lat, lon, baro_alt, true_track, on_ground], ...]
+            // Mapbox 3D 繪圖需要格式: [lon, lat, alt]
+            const coords = data.path.map(p => [p[2], p[1], p[3] || 0]);
+            
+            // 包裝成標準 GeoJSON
+            const geojson = { 
+                type: 'LineString', 
+                coordinates: coords 
+            };
+
+            console.log('💾 準備寫入 Supabase 資料庫...');
+
+            // 更新到你自己的 Supabase 資料庫 (永久保存)
+            const { error } = await supabaseClient
+                .from('flights')
+                .update({ route_geojson: geojson })
+                .eq('id', flightId);
+
+            if (error) throw error;
+
+            alert('✅ 軌跡下載並永久儲存成功！地圖即將重整');
+            fetchFlights(); // 重新拉取資料，觸發畫面重繪
+            
+        } catch(e) {
+            console.error(e);
+            alert('❌ 抓取失敗: ' + e.message);
+        }
+    };
 </script>
 </body>
 </html>
