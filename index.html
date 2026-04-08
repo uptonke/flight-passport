@@ -206,27 +206,17 @@
                 </div>
                 <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4">儲存 Save</button>
             </form>
-            <div class="mt-8 pt-6 border-t border-red-500/30">
-                <div class="text-xs text-red-400 font-bold mb-3 uppercase tracking-wider">⚠️ 軌跡工程模式 Track Engineering</div>
-                <div class="text-[10px] text-gray-500 mb-2">選項 A：黃金 7 天內從 OpenSky 抓取</div>
-                <div class="grid grid-cols-3 gap-2">
-                    <input type="text" id="dev-flight-id" placeholder="資料庫 ID" class="w-full bg-[#1e1e20] border border-red-500/30 rounded px-2 py-2 text-xs text-white">
-                    <input type="text" id="dev-icao24" placeholder="ICAO24 (例: 8990e9)" class="w-full bg-[#1e1e20] border border-red-500/30 rounded px-2 py-2 text-xs text-white uppercase">
-                    <input type="text" id="dev-unix" placeholder="Unix Time" class="w-full bg-[#1e1e20] border border-red-500/30 rounded px-2 py-2 text-xs text-white">
-                </div>
-                <button onclick="runMobileConsole()" class="w-full bg-red-500/20 hover:bg-red-500/40 text-red-400 border border-red-500/50 font-bold py-2 rounded-lg mt-2 mb-4 text-xs transition-colors">⚡ 從 OpenSky 抓取並儲存</button>
-
-                <div class="text-[10px] text-gray-500 mb-2 border-t border-red-500/20 pt-3">選項 B：匯入歷史 CSV 軌跡檔 (如 Flightradar24 匯出)</div>
+            <div class="mt-8 pt-6 border-t border-sky-500/30">
+                <div class="text-xs text-sky-400 font-bold mb-3 uppercase tracking-wider">🛠️ 軌跡工程模式 Track Engineering</div>
+                <div class="text-[10px] text-gray-500 mb-2">從 Flightradar24 匯出 CSV，永久綁定真實高解析度軌跡</div>
                 <div class="flex gap-2">
-                    <input type="text" id="csv-flight-id" placeholder="填入航班資料庫 ID" class="w-1/3 bg-[#1e1e20] border border-sky-500/30 rounded px-2 py-2 text-xs text-white">
+                    <input type="text" id="csv-flight-id" placeholder="航班 ID (見近期日誌)" class="w-1/3 bg-[#1e1e20] border border-sky-500/30 rounded px-2 py-2 text-xs text-white text-center font-bold">
                     <label class="w-2/3 bg-sky-500/20 hover:bg-sky-500/40 text-sky-400 border border-sky-500/50 font-bold py-2 rounded-lg text-xs transition-colors cursor-pointer text-center flex items-center justify-center">
                         <span id="csv-upload-btn-text">📂 選擇 CSV 並上傳</span>
                         <input type="file" id="track-csv-upload" accept=".csv" class="hidden" onchange="processCSVTrack(event)">
                     </label>
                 </div>
             </div>
-        </div>
-    </div>
 
     <script>
         // ==========================================
@@ -1108,64 +1098,7 @@
                 map.getSource('fleet-routes').setData({ type: 'FeatureCollection', features: [] });
             }
         }
-        // ==========================================
-        // 💾 真實歷史軌跡下載與永久保存引擎
-        // ==========================================
-        window.runMobileConsole = function() {
-        // 🚀 強制消除所有輸入格子前後的隱形空白
-        const id = document.getElementById('dev-flight-id').value.trim();
-        const icao = document.getElementById('dev-icao24').value.trim();
-        const unix = document.getElementById('dev-unix').value.trim();
-        
-        if(!id || !icao || !unix) {
-            alert('❌ 三個欄位都要填寫！');
-            return;
-        }
-        
-        window.downloadAndSaveTrack(id, icao, unix);
-    };
-
-    window.downloadAndSaveTrack = async function(flightId, icao24, unixTime) {
-        try {
-            console.log(`📡 開始向 OpenSky 請求 ${icao24} 的歷史軌跡...`);
             
-            const res = await fetch(`https://opensky-network.org/api/tracks/all?icao24=${icao24.toLowerCase()}&time=${unixTime}`);
-            
-            // 🚀 精準除錯：逼 OpenSky 說實話，到底是哪裡卡住
-            if (!res.ok) {
-                if (res.status === 404) throw new Error('404 找不到：該 Unix Time 飛機可能在地面未發訊號，或 OpenSky 未記錄此班次。');
-                if (res.status === 403 || res.status === 401) throw new Error('403 權限不足：OpenSky 已對免費版收緊歷史權限。');
-                if (res.status === 429) throw new Error('429 頻率限制：IP 呼叫次數達上限，請稍後再試。');
-                throw new Error(`HTTP 錯誤碼 ${res.status}`);
-            }
-            
-            const data = await res.json();
-            const coords = data.path
-                .filter(p => p[1] != null && p[2] != null) 
-                .map(p => [p[2], p[1], p[3] || 0]);
-            
-            if (coords.length < 2) throw new Error("此航班有效座標點不足，OpenSky 僅回傳殘缺資料，放棄儲存。");
-            
-            const geojson = { type: 'LineString', coordinates: coords };
-
-            // 寫入 Supabase 並強制回傳以確認命中
-            const { error, data: dbData } = await supabaseClient
-                .from('flights')
-                .update({ route_geojson: geojson })
-                .eq('id', flightId)
-                .select(); 
-
-            if (error) throw error;
-            if (!dbData || dbData.length === 0) throw new Error(`資料庫找不到 ID 為 [ ${flightId} ] 的航班，請確認輸入！`);
-
-            alert('✅ 軌跡下載並永久儲存成功！地圖即將重整');
-            fetchFlights(); 
-            
-        } catch(e) {
-            console.error(e);
-            alert('❌ 抓取失敗: ' + e.message);
-        }
-    };
         // ==========================================
     // 📂 本地 CSV 歷史軌跡解析與上傳引擎 (終極防彈版)
     // ==========================================
