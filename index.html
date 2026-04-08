@@ -289,13 +289,21 @@
     async function loadGlobalAirports() {
         const cachedDB = localStorage.getItem('airportDB_cache_v1');
         if (cachedDB) {
-            airportDB = JSON.parse(cachedDB);
-            renderAirportOptions(); return;
+            try {
+                // 🔥 防呆：如果快取破圖解析失敗，直接攔截不讓系統當機
+                airportDB = JSON.parse(cachedDB);
+                renderAirportOptions(); 
+                return;
+            } catch (e) {
+                console.warn('快取字典損毀，已清除並重新下載');
+                localStorage.removeItem('airportDB_cache_v1'); // 殺掉壞掉的快取
+            }
         }
+        
         try {
             const res = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
             const data = await res.json();
-            const manualOverrides = { 'TPE': { city: '桃園 Taipei' }, 'TSA': { city: '松山 Taipei' },                
+            const manualOverrides = { 'TPE': { city: '桃園 Taipei' }, 'TSA': { city: '松山 Taipei' }, 
                 'HND': { city: '東京羽田 Tokyo' }, 'NRT': { city: '東京成田 Tokyo' }, 'KIX': { city: '大阪 Osaka' },
                 'OKA': { city: '沖繩 Okinawa' }, 'CTS': { city: '札幌 Sapporo' }, 'KMJ': { city: '熊本 Kumamoto' }, 'FUK': { city: '福岡 Fukuoka' },
                 'PEK': { city: '北京首都 Beijing' }, 'PVG': { city: '上海浦東 Shanghai' }, 'SHA': { city: '上海虹橋 Shanghai' },
@@ -311,8 +319,7 @@
                 'JFK': { city: '紐約 New York' }, 'LAX': { city: '洛杉磯 Los Angeles' }, 'LAS': { city: '拉斯維加斯 Las Vegas' },
                 'IAD': { city: '華盛頓 Washington' }, 'SFO': { city: '舊金山 San Francisco' }, 'DEL': { city: '新德里 New Delhi' },
                 'CMB': { city: '科倫坡 Colombo'}
-                    
-                };
+            };
             data.forEach(a => { 
                 if (a.code) {
                     let code = a.code.toUpperCase();
@@ -333,6 +340,41 @@
     async function fetchFlights() {
         const { data, error } = await supabaseClient.from('flights').select('*').order('flight_date', { ascending: false });
         if (!error) setFlights(data);
+    }
+    // ==========================================
+    // 💾 Supabase 資料庫寫入與刪除 (補回遺失的函數)
+    // ==========================================
+    async function saveFlight(payload, id = null) {
+        try {
+            let result;
+            if (id) {
+                // 有 ID 代表是「編輯更新」
+                result = await supabaseClient.from('flights').update(payload).eq('id', id);
+            } else {
+                // 沒 ID 代表是「全新增」
+                result = await supabaseClient.from('flights').insert([payload]);
+            }
+            
+            if (result.error) throw result.error;
+            return true;
+        } catch (error) {
+            console.error('儲存失敗:', error);
+            alert('儲存失敗: ' + error.message);
+            return false;
+        }
+    }
+
+    async function deleteFlight(id) {
+        if (!confirm('確定要刪除這筆航班紀錄嗎？此動作無法復原。')) return false;
+        try {
+            const { error } = await supabaseClient.from('flights').delete().eq('id', id);
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('刪除失敗:', error);
+            alert('刪除失敗: ' + error.message);
+            return false;
+        }
     }
 
 // ==========================================
