@@ -1112,55 +1112,60 @@
         // 💾 真實歷史軌跡下載與永久保存引擎
         // ==========================================
         window.runMobileConsole = function() {
-            const id = document.getElementById('dev-flight-id').value;
-            const icao = document.getElementById('dev-icao24').value;
-            const unix = document.getElementById('dev-unix').value;
+        // 🚀 強制消除所有輸入格子前後的隱形空白
+        const id = document.getElementById('dev-flight-id').value.trim();
+        const icao = document.getElementById('dev-icao24').value.trim();
+        const unix = document.getElementById('dev-unix').value.trim();
+        
+        if(!id || !icao || !unix) {
+            alert('❌ 三個欄位都要填寫！');
+            return;
+        }
+        
+        window.downloadAndSaveTrack(id, icao, unix);
+    };
+
+    window.downloadAndSaveTrack = async function(flightId, icao24, unixTime) {
+        try {
+            console.log(`📡 開始向 OpenSky 請求 ${icao24} 的歷史軌跡...`);
             
-            if(!id || !icao || !unix) {
-                alert('❌ 三個欄位都要填寫！');
-                return;
+            const res = await fetch(`https://opensky-network.org/api/tracks/all?icao24=${icao24.toLowerCase()}&time=${unixTime}`);
+            
+            // 🚀 精準除錯：逼 OpenSky 說實話，到底是哪裡卡住
+            if (!res.ok) {
+                if (res.status === 404) throw new Error('404 找不到：該 Unix Time 飛機可能在地面未發訊號，或 OpenSky 未記錄此班次。');
+                if (res.status === 403 || res.status === 401) throw new Error('403 權限不足：OpenSky 已對免費版收緊歷史權限。');
+                if (res.status === 429) throw new Error('429 頻率限制：IP 呼叫次數達上限，請稍後再試。');
+                throw new Error(`HTTP 錯誤碼 ${res.status}`);
             }
             
-            window.downloadAndSaveTrack(id, icao, unix);
-        };
-        window.downloadAndSaveTrack = async function(flightId, icao24, unixTime) {
-            try {
-                console.log(`📡 開始向 OpenSky 請求 ${icao24} 的歷史軌跡...`);
-                
-                const res = await fetch(`https://opensky-network.org/api/tracks/all?icao24=${icao24.toLowerCase()}&time=${unixTime}`);
-                if (!res.ok) throw new Error('API 拒絕存取 (可能超出免費帳號的時間限制，或無此飛機資料)');
-                const data = await res.json();
+            const data = await res.json();
+            const coords = data.path
+                .filter(p => p[1] != null && p[2] != null) 
+                .map(p => [p[2], p[1], p[3] || 0]);
+            
+            if (coords.length < 2) throw new Error("此航班有效座標點不足，OpenSky 僅回傳殘缺資料，放棄儲存。");
+            
+            const geojson = { type: 'LineString', coordinates: coords };
 
-                console.log('✅ 成功取得軌跡資料，準備轉換格式...');
+            // 寫入 Supabase 並強制回傳以確認命中
+            const { error, data: dbData } = await supabaseClient
+                .from('flights')
+                .update({ route_geojson: geojson })
+                .eq('id', flightId)
+                .select(); 
 
-                const coords = data.path
-                    .filter(p => p[1] != null && p[2] != null) 
-                    .map(p => [p[2], p[1], p[3] || 0]);
-                
-                if (coords.length < 2) throw new Error("此航班有效座標點不足 (可能超出免費調閱期限)，放棄儲存");
-                
-                const geojson = { 
-                    type: 'LineString', 
-                    coordinates: coords 
-                };
+            if (error) throw error;
+            if (!dbData || dbData.length === 0) throw new Error(`資料庫找不到 ID 為 [ ${flightId} ] 的航班，請確認輸入！`);
 
-                console.log('💾 準備寫入 Supabase 資料庫...');
-
-                const { error } = await supabaseClient
-                    .from('flights')
-                    .update({ route_geojson: geojson })
-                    .eq('id', flightId);
-
-                if (error) throw error;
-
-                alert('✅ 軌跡下載並永久儲存成功！地圖即將重整');
-                fetchFlights();
-                
-            } catch(e) {
-                console.error(e);
-                alert('❌ 抓取失敗: ' + e.message);
-            }
-        };
+            alert('✅ 軌跡下載並永久儲存成功！地圖即將重整');
+            fetchFlights(); 
+            
+        } catch(e) {
+            console.error(e);
+            alert('❌ 抓取失敗: ' + e.message);
+        }
+    };
         // ==========================================
     // 📂 本地 CSV 歷史軌跡解析與上傳引擎 (終極防彈版)
     // ==========================================
