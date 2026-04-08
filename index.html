@@ -818,7 +818,7 @@
             }
         }
 
-        const TIME_SCALE = 800; 
+        const TIME_SCALE = 2000; 
 
         function globalAnimationLoop(timestamp) {
             if (!animationState.isRunning || animationState.planes.length === 0) return;
@@ -1056,7 +1056,7 @@
 
                 const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
 
-                const duration = ((lineDistance / 850) + 0.5) * 800;
+                const duration = ((lineDistance / 850) + 0.5) * 2000;
                 fleetPlanes.push({ marker: marker, el: el, coords: coords, duration: duration, progress: Math.random() });
             });
 
