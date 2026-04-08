@@ -382,19 +382,28 @@
 
             stats.timezonesCrossed += Math.round(Math.abs(orig.coords[0] - dest.coords[0]) / 15);
 
-            // 🔥 優先使用資料庫中儲存的真實歷史軌跡 (GeoJSON)，若無才用模擬的大圓航線
-            // 🔥 防彈版軌跡邏輯：檢查資料是否存在，且至少要有 2 個座標點才能連成線
-            if (f.route_geojson && f.route_geojson.coordinates && f.route_geojson.coordinates.length > 1) {
-                f.routeCoords = f.route_geojson.coordinates;
-                try {
-                    // 嘗試以真實軌跡計算距離
-                    f.distance = turf.length(f.route_geojson, {units: 'kilometers'});
-                } catch (e) {
-                    // 如果出現異常，退回直線距離
-                    f.distance = turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
+            // 🔥 淨水器：過濾 OpenSky 產生的 null 壞點
+            if (f.route_geojson && f.route_geojson.coordinates) {
+                // 只保留經緯度都不是 null 且是有效數字的點
+                const cleanCoords = f.route_geojson.coordinates.filter(c => c && c[0] != null && c[1] != null && !isNaN(c[0]) && !isNaN(c[1]));
+                
+                if (cleanCoords.length > 1) {
+                    f.routeCoords = cleanCoords;
+                    f.route_geojson.coordinates = cleanCoords; // 確保 turf 運算時也是乾淨的
+                    try {
+                        f.distance = turf.length(f.route_geojson, {units: 'kilometers'});
+                    } catch (e) {
+                        f.distance = turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
+                    }
+                } else {
+                    f.routeCoords = null; // 點數被洗完後如果不足，直接打掉重練
                 }
             } else {
-                // 🚨 備案啟動：沒有真實軌跡，或軌跡壞掉（點數不足），一律畫模擬大圓航線
+                f.routeCoords = null;
+            }
+
+            // 🚨 備案啟動：沒有真實軌跡，或軌跡壞掉被洗空了，一律畫模擬大圓航線
+            if (!f.routeCoords) {
                 const route = turf.greatCircle(orig.coords, dest.coords); 
                 const lineDistance = turf.length(route);
                 const maxHeight = Math.min(lineDistance * 200, 2000000); 
@@ -407,7 +416,6 @@
                 arcCoords.push([dest.coords[0], dest.coords[1], 0]); 
                 f.routeCoords = arcCoords;
             }
-            f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1);
             f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1);
         });
 
@@ -1086,8 +1094,12 @@ function importCSV(event) {
             console.log('✅ 成功取得軌跡資料，準備轉換格式...');
 
             // OpenSky 回傳格式: path: [[time, lat, lon, baro_alt, true_track, on_ground], ...]
-            // Mapbox 3D 繪圖需要格式: [lon, lat, alt]
-            const coords = data.path.map(p => [p[2], p[1], p[3] || 0]);
+            // 🚨 增加防呆過濾：嚴格剔除那些有時間、但經緯度是 null 的斷訊點
+            const coords = data.path
+                .filter(p => p[1] != null && p[2] != null) 
+                .map(p => [p[2], p[1], p[3] || 0]);
+            
+            if (coords.length < 2) throw new Error("此航班有效座標點不足 (可能超出免費調閱期限)，放棄儲存");
             
             // 包裝成標準 GeoJSON
             const geojson = { 
