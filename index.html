@@ -383,18 +383,31 @@
             stats.timezonesCrossed += Math.round(Math.abs(orig.coords[0] - dest.coords[0]) / 15);
 
             // 🔥 優先使用資料庫中儲存的真實歷史軌跡 (GeoJSON)，若無才用模擬的大圓航線
-            if (f.route_geojson && f.route_geojson.coordinates) {
+            // 🔥 防彈版軌跡邏輯：檢查資料是否存在，且至少要有 2 個座標點才能連成線
+            if (f.route_geojson && f.route_geojson.coordinates && f.route_geojson.coordinates.length > 1) {
                 f.routeCoords = f.route_geojson.coordinates;
-                f.distance = turf.length(f.route_geojson, {units: 'kilometers'}); // 依照真實軌跡更新準確距離
-            } else if (!f.routeCoords) {
-                const route = turf.greatCircle(orig.coords, dest.coords); const lineDistance = turf.length(route);
-                const maxHeight = Math.min(lineDistance * 200, 2000000); const arcCoords = [];
-                 for (let d = 0; d <= lineDistance; d += lineDistance / 250) {
-                    let pt = turf.along(route, d).geometry.coordinates; let h = Math.sin((d / lineDistance) * Math.PI) * maxHeight;
+                try {
+                    // 嘗試以真實軌跡計算距離
+                    f.distance = turf.length(f.route_geojson, {units: 'kilometers'});
+                } catch (e) {
+                    // 如果出現異常，退回直線距離
+                    f.distance = turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
+                }
+            } else {
+                // 🚨 備案啟動：沒有真實軌跡，或軌跡壞掉（點數不足），一律畫模擬大圓航線
+                const route = turf.greatCircle(orig.coords, dest.coords); 
+                const lineDistance = turf.length(route);
+                const maxHeight = Math.min(lineDistance * 200, 2000000); 
+                const arcCoords = [];
+                for (let d = 0; d <= lineDistance; d += lineDistance / 250) {
+                    let pt = turf.along(route, d).geometry.coordinates; 
+                    let h = Math.sin((d / lineDistance) * Math.PI) * maxHeight;
                     arcCoords.push([pt[0], pt[1], h]); 
                 }
-                arcCoords.push([dest.coords[0], dest.coords[1], 0]); f.routeCoords = arcCoords;
+                arcCoords.push([dest.coords[0], dest.coords[1], 0]); 
+                f.routeCoords = arcCoords;
             }
+            f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1);
             f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1);
         });
 
