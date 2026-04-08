@@ -164,7 +164,9 @@
                     <div id="list-routes" class="space-y-3"></div>
                 </div>
             </div>
-    </div> <!-- ✅ 關閉 passportModal -->
+        </div>
+    </div>
+    <!-- ✅ passportModal 到此結束，addFlightModal 是獨立的平級 modal -->
 
     <div id="addFlightModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="glass-panel modal-panel p-8 rounded-3xl w-full max-w-md border border-white/20 overflow-y-auto max-h-[90vh] opacity-0 scale-90">
@@ -224,6 +226,7 @@
                 </div>
             </div>
         </div>
+    </div>
 
     <script>
         // ==========================================
@@ -699,7 +702,7 @@
                 if(animate) {
                     animate(el, { opacity: 0 }, { duration: 0.3 });
                     animate(panel, { scale: 0.9, y: 30, opacity: 0 }, { duration: 0.3 });
-                    setTimeout(() => el.classList.add('hidden'), 300); // 👈 捨棄 .finished.then，改用 setTimeout 強制收尾
+                    setTimeout(() => el.classList.add('hidden'), 300);
                 } else el.classList.add('hidden');
             }
         };
@@ -719,28 +722,18 @@
         // 🔥 2D/3D 地圖投影切換引擎
         window.toggleProjection = function() {
             isGlobe = !isGlobe;
-            
-            // 切換投影模式： globe (地球) <-> equirectangular (等距圓柱投影平面)
             map.setProjection({ name: isGlobe ? 'globe' : 'equirectangular' });
-            
-            // 運鏡連動：平面時改為正上俯視，地球時恢復 45 度立體傾角
-            map.flyTo({ 
-                pitch: isGlobe ? 45 : 0, 
-                duration: 1200 
-            });
-            
+            map.flyTo({ pitch: isGlobe ? 45 : 0, duration: 1200 });
             const btn = document.getElementById('btn-projection-toggle');
             if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
-        }; // 👈 兇手就是它！你原本的程式碼在這裡漏掉了 `};`
+        };
 
         // 🔥 地貌/夜景 一鍵切換引擎
         window.toggleNightMode = function() {
             isNightMode = !isNightMode;
-            
             if (map.getLayer('nasa-black-marble-layer')) {
                 map.setLayoutProperty('nasa-black-marble-layer', 'visibility', isNightMode ? 'visible' : 'none');
             }
-            
             const btn = document.getElementById('btn-night-toggle');
             if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
         };
@@ -750,7 +743,6 @@
         // ==========================================
         const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
 
-        // 🚨 每次 Style 載入完畢後，重新掛上 NASA 燈光網
         map.on('style.load', () => {
             map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
 
@@ -781,7 +773,6 @@
             }
         });
 
-        // 🚨 這裡就是你遺失的函數開頭！現在補回來了！
         function renderMapFeatures(stats) {
             // --- 1. Airports ---
             let airFeats = [];
@@ -814,11 +805,10 @@
             animationState.planes.forEach(p => p.marker.remove()); 
             
             animationState.planes = [];
-            animationState.currentPlaneIndex = 0; // 👈 關鍵：新增排班指示器，從第 0 架開始飛
+            animationState.currentPlaneIndex = 0;
 
             stats.timeline.forEach((f, i) => {
                 const routeId = `r-${i}`;
-                // 初始軌跡設為空，輪到它才開始畫線
                 map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
                 map.addLayer({ 'id': `${routeId}-line`, 'type': 'line', 'source': routeId, 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': f.routeColor, 'line-width': 3, 'line-opacity': 0.85 } });
                 
@@ -826,7 +816,7 @@
                 planeIcon.innerHTML = '✈️'; planeIcon.style.fontSize = '18px'; planeIcon.style.transition = 'transform 0.1s linear'; elContainer.appendChild(planeIcon);
                 const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(f.routeCoords[0]).addTo(map);
                 
-                planeMarker.getElement().style.opacity = 0; // 👈 關鍵：所有飛機先隱藏在停機坪，叫到號碼再出來
+                planeMarker.getElement().style.opacity = 0;
 
                 const actualHours = f.flight_hours || ((f.distance / 850) + 0.5);
                 animationState.planes.push({ id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords, flightHours: actualHours, startTime: null });
@@ -838,39 +828,32 @@
             }
         }
 
-    // 🔥 時間比例尺設定：1 小時飛行時間 = 畫面上幾毫秒 (800ms 代表 1小時飛 0.8秒)
         const TIME_SCALE = 800; 
 
         function globalAnimationLoop(timestamp) {
             if (!animationState.isRunning || animationState.planes.length === 0) return;
 
-            // 只抓出「目前輪到」的那架飛機
             let currentIndex = animationState.currentPlaneIndex;
             let p = animationState.planes[currentIndex];
 
-            // 1. 初始化當前飛機起飛狀態
             if (!p.startTime) {
                 p.startTime = timestamp;
-                p.marker.getElement().style.opacity = 1; // 飛機現身
+                p.marker.getElement().style.opacity = 1;
             }
 
-            // 2. 精算進度
             const totalDurationMs = p.flightHours * TIME_SCALE;
             let progress = (timestamp - p.startTime) / totalDurationMs;
 
-            // 3. 飛行推進中
             if (progress < 1) {
                 const maxIndex = p.coords.length - 1;
                 const currentStep = Math.floor(progress * maxIndex);
 
                 if (currentStep > 0 && map.getSource(p.id)) {
-                    // 畫出飛過的軌跡
                     map.getSource(p.id).setData({ 
                         'type': 'FeatureCollection', 
                         'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords.slice(0, currentStep + 1) } } ] 
                     });
                     
-                    // 機頭轉向
                     const p1 = p.coords[currentStep - 1];
                     const p2 = p.coords[currentStep];
                     const bearing = turf.bearing(p1, p2);
@@ -879,22 +862,18 @@
                     p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
                 }
             } else {
-                // 4. 抵達終點！交棒給下一架
                 if (map.getSource(p.id)) {
                     map.getSource(p.id).setData({ 
                         'type': 'FeatureCollection', 
                         'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords } } ] 
-                    }); // 確保軌跡畫到滿
+                    });
                 }
-                p.marker.getElement().style.opacity = 0; // 隱藏已降落的飛機
+                p.marker.getElement().style.opacity = 0;
                 
                 animationState.currentPlaneIndex++;
                 
-                // 5. 判斷是否全劇終 (開啟新一輪 Loop)
                 if (animationState.currentPlaneIndex >= animationState.planes.length) {
-                    animationState.currentPlaneIndex = 0; // 倒帶回第一架
-                    
-                    // 洗掉地圖上的所有軌跡與時間，準備看重播
+                    animationState.currentPlaneIndex = 0;
                     animationState.planes.forEach(plane => {
                         plane.startTime = null;
                         if (map.getSource(plane.id)) {
@@ -911,13 +890,9 @@
         try {
             const o = airportDB[origin];
             const d = airportDB[dest];
-            
-            // 🚀 防呆：如果機場座標有瑕疵，直接放棄運鏡，保護系統不崩潰
             if (!o || !d || !o.coords || !d.coords) return;
-            
             if (map.getStyle()) map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-') && l.id.endsWith('-line')) map.setPaintProperty(l.id, 'line-width', 3); });
             if (map.getLayer(`${routeId}-line`)) map.setPaintProperty(`${routeId}-line`, 'line-width', 8); 
-            
             map.flyTo({ center: turf.midpoint(turf.point(o.coords), turf.point(d.coords)).geometry.coordinates, zoom: 4, duration: 1500 });
         } catch (e) {
             console.warn('無法聚焦此航線', e);
@@ -936,7 +911,6 @@
                 document.getElementById('db-status').innerText = '系統上線 Online';
                 document.getElementById('db-status').className = 'text-xl font-black text-green-400 flex items-center gap-2';
                 
-                // 🔥 Framer Motion: 首頁載入動畫
                 if(animate) {
                     animate("#ui-header", { y: [-50, 0], opacity: [0, 1] }, { duration: 0.8, easing: "ease-out" });
                     animate("#main-dashboard", { y: [50, 0], opacity: [0, 1] }, { delay: 0.3, type: "spring", stiffness: 200, damping: 20 });
@@ -950,7 +924,6 @@
             } catch(e) { document.getElementById('db-status').innerHTML = '<span class="text-red-500">連線失敗 Failed</span>'; }
         }
 
-        // 表單操作相關 (Add/Edit/Delete)
         window.smartSplitFlight = function(e) {
             if(!e.target || !e.target.value) return;
             let val = e.target.value.toUpperCase().replace(/\s/g, '');
@@ -970,7 +943,6 @@
         window.deleteFlightHandler = async (id) => { if(await deleteFlight(id)) fetchFlights(); };
         
         window.editFlight = (id) => {
-            // 🚀 唯一修復處：強制轉型 String，解決資料庫數字 ID 與 HTML 字串 ID 的衝突
             const f = flightsState.find(f => String(f.id) === String(id)); 
             if(!f) return; 
             
@@ -1017,7 +989,6 @@
 
     function importCSV(event) {
         const file = event.target.files[0]; if (!file) return;
-        // 依你的需求實作匯入邏輯
         alert('匯入功能尚未實作');
     }
     // ==========================================
@@ -1043,21 +1014,19 @@
         };
 
         function startFleetRadar() {
-            stopFleetRadar(); // 確保不重複執行
+            stopFleetRadar();
             fleetPlanes = [];
 
-            // 建立專屬的淡淡航線圖層
             if (!map.getSource('fleet-routes')) {
                 map.addSource('fleet-routes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
                 map.addLayer({
                     'id': 'fleet-routes-layer',
                     'type': 'line',
                     'source': 'fleet-routes',
-                    'paint': { 'line-color': '#38bdf8', 'line-width': 1, 'line-opacity': 0.2 } // 淡淡的天藍色軌跡
+                    'paint': { 'line-color': '#38bdf8', 'line-width': 1, 'line-opacity': 0.2 }
                 });
             }
 
-            // 收集你所有的歷史有效航班
             const validFlights = flightsState.filter(f => f.origin_code && f.dest_code && airportDB[f.origin_code] && airportDB[f.dest_code]);
             const routeFeatures = [];
 
@@ -1065,7 +1034,6 @@
                 const orig = airportDB[f.origin_code];
                 const dest = airportDB[f.dest_code];
                 
-                // 數學計算：大圓航線軌跡點
                 const route = turf.greatCircle(orig.coords, dest.coords);
                 const lineDistance = turf.length(route);
                 const coords = [];
@@ -1075,17 +1043,15 @@
                 coords.push(dest.coords);
                 routeFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
 
-                // 創造 DOM 飛機圖示
                 const el = document.createElement('div');
                 el.innerHTML = '✈️';
                 el.style.fontSize = '14px';
-                el.style.transition = 'transform 0s'; // 關閉 CSS 過渡，由 JS 全權接管高更新率
+                el.style.transition = 'transform 0s';
                 
-                // 賦予每架飛機專屬 Popup (點擊查看歷史航班資訊)
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
                     new mapboxgl.Popup({ closeButton: false })
-                        .setLngLat(orig.coords) // 會隨動態更新
+                        .setLngLat(orig.coords)
                         .setHTML(`
                             <div class="min-w-[150px]">
                                 <div class="font-black text-lg text-sky-400">${f.airline || ''} ${f.flight_number || ''}</div>
@@ -1100,15 +1066,12 @@
 
                 const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
 
-                // 隨機打亂每架飛機的出發進度，製造「滿天飛舞」的錯覺
-                const duration = ((lineDistance / 850) + 0.5) * 800; // 統一速度基準
+                const duration = ((lineDistance / 850) + 0.5) * 800;
                 fleetPlanes.push({ marker: marker, el: el, coords: coords, duration: duration, progress: Math.random() });
             });
 
-            // 渲染所有淡淡的歷史航線
             map.getSource('fleet-routes').setData({ type: 'FeatureCollection', features: routeFeatures });
 
-            // 啟動專屬高效能獨立循環
             let lastTime = performance.now();
             function renderFleet(time) {
                 const delta = time - lastTime;
@@ -1116,7 +1079,7 @@
 
                 fleetPlanes.forEach(p => {
                     p.progress += delta / p.duration;
-                    if (p.progress >= 1) p.progress = 0; // 無限循環
+                    if (p.progress >= 1) p.progress = 0;
 
                     const maxIndex = p.coords.length - 1;
                     const step = p.progress * maxIndex;
@@ -1148,9 +1111,6 @@
         // ==========================================
         // 💾 真實歷史軌跡下載與永久保存引擎
         // ==========================================
-        // 💡 使用方式：在瀏覽器 Console 執行 downloadAndSaveTrack(你的航班ID, '飛機ICAO24', Unix時間戳);
-        // 範例：downloadAndSaveTrack(15, '8990e9', 1680000000);
-        
         window.runMobileConsole = function() {
             const id = document.getElementById('dev-flight-id').value;
             const icao = document.getElementById('dev-icao24').value;
@@ -1161,29 +1121,24 @@
                 return;
             }
             
-            // 呼叫原本寫在背景的下載器
             window.downloadAndSaveTrack(id, icao, unix);
         };
         window.downloadAndSaveTrack = async function(flightId, icao24, unixTime) {
             try {
                 console.log(`📡 開始向 OpenSky 請求 ${icao24} 的歷史軌跡...`);
                 
-                // 呼叫 OpenSky 歷史軌跡 API
                 const res = await fetch(`https://opensky-network.org/api/tracks/all?icao24=${icao24.toLowerCase()}&time=${unixTime}`);
                 if (!res.ok) throw new Error('API 拒絕存取 (可能超出免費帳號的時間限制，或無此飛機資料)');
                 const data = await res.json();
 
                 console.log('✅ 成功取得軌跡資料，準備轉換格式...');
 
-                // OpenSky 回傳格式: path: [[time, lat, lon, baro_alt, true_track, on_ground], ...]
-                // 🚨 增加防呆過濾：嚴格剔除那些有時間、但經緯度是 null 的斷訊點
                 const coords = data.path
                     .filter(p => p[1] != null && p[2] != null) 
                     .map(p => [p[2], p[1], p[3] || 0]);
                 
                 if (coords.length < 2) throw new Error("此航班有效座標點不足 (可能超出免費調閱期限)，放棄儲存");
                 
-                // 包裝成標準 GeoJSON
                 const geojson = { 
                     type: 'LineString', 
                     coordinates: coords 
@@ -1191,7 +1146,6 @@
 
                 console.log('💾 準備寫入 Supabase 資料庫...');
 
-                // 更新到你自己的 Supabase 資料庫 (永久保存)
                 const { error } = await supabaseClient
                     .from('flights')
                     .update({ route_geojson: geojson })
@@ -1200,7 +1154,7 @@
                 if (error) throw error;
 
                 alert('✅ 軌跡下載並永久儲存成功！地圖即將重整');
-                fetchFlights(); // 重新拉取資料，觸發畫面重繪
+                fetchFlights();
                 
             } catch(e) {
                 console.error(e);
@@ -1212,19 +1166,17 @@
     // ==========================================
     window.processCSVTrack = function(event) {
         const fileInput = event.target;
-        // 🚀 關鍵修復：加入 .trim() 強制消除手機輸入法自作聰明加上的空白字元
         const flightId = document.getElementById('csv-flight-id').value.trim();
         
         if (!flightId) {
             alert('❌ 請先填寫左側的航班 ID！(可在「近期日誌」的紅色標籤找到)');
-            fileInput.value = ''; // 清空檔案選擇
+            fileInput.value = '';
             return;
         }
 
         const file = fileInput.files[0];
         if (!file) return;
 
-        // 只替換文字 span，保護背後的 input 不被摧毀
         const btnTextEl = document.getElementById('csv-upload-btn-text');
         if (btnTextEl) btnTextEl.innerText = '⏳ 解析與寫入中...';
 
@@ -1241,7 +1193,6 @@
 
                     let lat = null, lon = null, alt = 0;
 
-                    // 策略 1：針對 Flightradar24 原生雙引號格式 ("Lat,Lon")
                     const parts = line.split('"');
                     if (parts.length >= 3) {
                         const posParts = parts[1].split(',');
@@ -1252,7 +1203,6 @@
                         const restParts = parts[2].split(',');
                         if (restParts.length > 1) alt = parseFloat(restParts[1]) || 0;
                     } 
-                    // 策略 2：備用暴力解析 (防止被 Excel 開啟後破壞了引號)
                     else {
                         const nums = line.match(/-?\d+\.\d+/g);
                         if (nums && nums.length >= 2) {
@@ -1261,7 +1211,6 @@
                         }
                     }
 
-                    // 驗證地球絕對座標，避免垃圾資料污染地圖
                     if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
                         if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
                             coords.push([lon, lat, alt]); 
@@ -1275,7 +1224,6 @@
 
                 const geojson = { type: 'LineString', coordinates: coords };
 
-                // 寫入 Supabase，並強制要求回傳結果 (select) 來確認是否命中 ID
                 const { error, data } = await supabaseClient
                     .from('flights')
                     .update({ route_geojson: geojson })
@@ -1294,7 +1242,6 @@
                 console.error(err);
                 alert('❌ 上傳失敗: ' + err.message);
             } finally {
-                // 恢復按鈕狀態，並重置 input 讓你可以連續點擊上傳
                 if (btnTextEl) btnTextEl.innerText = '📂 選擇 CSV 並上傳';
                 fileInput.value = ''; 
             }
