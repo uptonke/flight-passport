@@ -1186,19 +1186,16 @@ function importCSV(event) {
                     if (!line) continue;
 
                     // Flightradar24 的 Position 通常被雙引號包住，例如："40.071236,116.607994"
-                    // 我們用雙引號來精準切開字串
                     const parts = line.split('"');
                     if (parts.length >= 3) {
-                        const posStr = parts[1]; // 這裡會拿到 40.071236,116.607994
+                        const posStr = parts[1]; 
                         const [lat, lon] = posStr.split(',').map(Number);
                         
-                        // parts[2] 會是後面的資料，例如 ",0,2,244"
                         const rest = parts[2].split(',');
-                        const alt = Number(rest[1]) || 0; // 高度通常在逗號後第一格
+                        const alt = Number(rest[1]) || 0; 
 
                         // 確保經緯度是有效數字
                         if (!isNaN(lat) && !isNaN(lon)) {
-                            // Mapbox / GeoJSON 的規格是 [經度, 緯度, 高度]
                             coords.push([lon, lat, alt]); 
                         }
                     }
@@ -1215,7 +1212,7 @@ function importCSV(event) {
 
                 const btnLabel = event.target.parentElement;
                 const originalText = btnLabel.innerHTML;
-                btnLabel.innerHTML = '⏳ 正在寫入資料庫...';
+                btnLabel.innerHTML = '⏳ 正在寫入...';
 
                 const { error } = await supabaseClient
                     .from('flights')
@@ -1226,7 +1223,7 @@ function importCSV(event) {
 
                 btnLabel.innerHTML = originalText;
                 alert('🎉 CSV 軌跡成功綁定並永久儲存！地圖即將重整');
-                fetchFlights(); // 重新拉取資料重繪地圖
+                fetchFlights(); 
 
             } catch(err) {
                 console.error(err);
