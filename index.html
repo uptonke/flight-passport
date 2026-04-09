@@ -990,9 +990,15 @@
                 document.getElementById('db-status').className = 'text-xl font-black text-green-400 flex items-center gap-2';
                 
                 if(animate) {
-                    animate("#ui-header", { y: [-50, 0], opacity: [0, 1] }, { duration: 0.8, easing: "ease-out" });
-                    animate("#main-dashboard", { y: [50, 0], opacity: [0, 1] }, { delay: 0.3, type: "spring", stiffness: 200, damping: 20 });
-                }
+    animate("#ui-header", { y: [-50, 0], opacity: [0, 1] }, { duration: 0.8, easing: "ease-out" });
+    animate("#main-dashboard", { y: [50, 0], opacity: [0, 1] }, { delay: 0.3, type: "spring", stiffness: 200, damping: 20 });
+} else {
+    // 防呆機制：動畫引擎沒上線時，強制顯示 UI
+    const header = document.getElementById('ui-header');
+    const dash = document.getElementById('main-dashboard');
+    if (header) header.classList.remove('opacity-0');
+    if (dash) dash.classList.remove('opacity-0', 'translate-y-10');
+}
 
                 if (window.innerWidth < 768) {
                     const content = document.getElementById('dash-content');
