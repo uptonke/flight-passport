@@ -162,6 +162,13 @@
                         <div class="text-3xl font-black text-white" id="pp-total-aircraft">0</div>
                         <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">機型 Top Aircraft</div>
                     </div>
+                    <div>
+    <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
+        <div class="text-3xl font-black text-white" id="pp-total-aircraft-dist">0</div>
+        <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">機型里程 Top Aircraft Dist (km)</div>
+    </div>
+    <div id="list-aircraft-dist" class="space-y-3"></div>
+</div>
                     <div id="list-aircraft" class="space-y-3"></div>
                 </div>
                 <div>
@@ -474,7 +481,7 @@
             let stats = {
                 totalKm: 0, totalHours: 0, completedFlights: 0, domCount: 0, intCount: 0, longCount: 0,
                 shortest: { route: '', dist: Infinity }, longest: { route: '', dist: -Infinity },
-                freq: { airports: {}, airlines: {}, airlinesDist: {}, routes: {}, directedRoutes: {}, aircrafts: {} },
+                freq: { airports: {}, airlines: {}, airlinesDist: {}, routes: {}, directedRoutes: {}, aircrafts: {}, aircraftsDist: {} },
                 undirectedRouteDistances: {}, observedDirectedRoutes: new Set(),
                 seatStats: { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 },
                 yearlyDist: {}, monthlyCount: new Array(12).fill(0), takeoffStats: new Array(24).fill(0), landingStats: new Array(24).fill(0),
@@ -512,6 +519,7 @@
                 if(f.airline) stats.freq.airlines[f.airline] = (stats.freq.airlines[f.airline]||0)+1;
                 if(f.airline) stats.freq.airlinesDist[f.airline] = (stats.freq.airlinesDist[f.airline]||0) + Math.round(dist);
                 if(f.aircraft_type) stats.freq.aircrafts[f.aircraft_type] = (stats.freq.aircrafts[f.aircraft_type]||0)+1;
+                if(f.aircraft_type) stats.freq.aircraftsDist[f.aircraft_type] = (stats.freq.aircraftsDist[f.aircraft_type]||0) + Math.round(dist);
 
                 if(f.seat_class) { stats.seatStats.class[f.seat_class] = (stats.seatStats.class[f.seat_class] || 0) + 1; stats.seatStats.validClasses++; }
                 if(f.seat_type) { stats.seatStats.type[f.seat_type] = (stats.seatStats.type[f.seat_type] || 0) + 1; stats.seatStats.validTypes++; }
@@ -685,6 +693,7 @@
             };
             const sTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
             sTxt('pp-total-aircraft', renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600'));
+            sTxt('pp-total-aircraft-dist', renderList(stats.freq.aircraftsDist, 'list-aircraft-dist', 'bg-teal-500'));
             sTxt('pp-total-routes', renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]'));
             sTxt('pp-total-airports', renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]'));
             sTxt('pp-total-airlines', renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', true));
