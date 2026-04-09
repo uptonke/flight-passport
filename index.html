@@ -249,6 +249,15 @@
         const SUPABASE_URL = 'https://yrccanqxzrcoknzabifz.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_lDfwRDxgMhzRwVk0-Qu3vg_9HTmTFZy';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 🚨 統一在這裡宣告，確保沒有重複的 let
+        let airportDB = {}; 
+        let editingFlightId = null;
+        let currentYearFilter = 'ALL';
+        let animationState = { startTime: 0, planes: [], isRunning: false };
+        let isAppInitialized = false; // 防呆機制
+        let isGlobe = true; // 控制 2D/3D 切換狀態
+        let isNightMode = false;
 
         // ==========================================
         // 🔒 Auth & Session Management (新增的驗證機制)
@@ -324,17 +333,8 @@
         }
 
         // 你原本的 submitFlight 等 function 可以留在外面，因為它們也是被點擊時才觸發
-        async function submitFlight(event)
+        async function submitFlight(event) {
 
-
-        // 🚨 統一在這裡宣告，確保沒有重複的 let
-        let airportDB = {}; 
-        let editingFlightId = null;
-        let currentYearFilter = 'ALL';
-        let animationState = { startTime: 0, planes: [], isRunning: false };
-        let isAppInitialized = false; // 防呆機制
-        let isGlobe = true; // 控制 2D/3D 切換狀態
-        let isNightMode = false;
 
         // 🔥 導入 Framer Motion 原生版 (motion)
         let animate, stagger, spring;
