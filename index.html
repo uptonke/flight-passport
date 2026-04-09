@@ -317,25 +317,6 @@
         // 網頁一載入，馬上執行權限檢查
         document.addEventListener('DOMContentLoaded', checkAuth);
 
-
-        // ==========================================
-        // 🚀 Main Application Logic
-        // ==========================================
-        
-        function initApp() {
-            // ⚠️ 請把你原本寫在這裡的「載入 Mapbox 地圖」、「撈取 Supabase 資料 (select)」、「畫 Chart.js」的程式碼，
-            // ⚠️ 全 部 移 到 這 個 Function 裡 面！
-            // 這樣才能確保是「登入拿到 Token 後」才去戳資料庫。
-            
-            console.log("System Initialized. Fetching data...");
-            // map = new mapboxgl.Map({...});
-            // fetchFlightData();
-        }
-
-        // 你原本的 submitFlight 等 function 可以留在外面，因為它們也是被點擊時才觸發
-        async function submitFlight(event) {
-
-
         // 🔥 導入 Framer Motion 原生版 (motion)
         let animate, stagger, spring;
         import("https://cdn.jsdelivr.net/npm/motion@11.11.13/+esm").then(module => {
