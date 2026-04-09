@@ -834,9 +834,9 @@
                 content.classList.add('opacity-0', 'h-0', 'mt-0'); icon.style.transform = 'rotate(180deg)';
                 setTimeout(() => content.classList.add('hidden'), 500); 
             }
-        }; // ✅ 讓 toggleDashboard 在這裡先結束！
+        };
 
-        // 🔥 手機版 Header 折疊引擎 (獨立出來)
+        // 🔥 手機版 Header 折疊引擎
         window.toggleHeader = function() {
             if (window.innerWidth >= 768) return; // 電腦版不觸發
             const content = document.getElementById('header-content');
@@ -860,6 +860,7 @@
                 }, 500); 
             }
         };
+
         // 🔥 2D/3D 地圖投影切換引擎
         window.toggleProjection = function() {
             isGlobe = !isGlobe;
