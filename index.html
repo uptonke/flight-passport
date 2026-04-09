@@ -187,6 +187,13 @@
                     </div>
                     <div id="list-routes" class="space-y-3"></div>
                 </div>
+                <div>
+                    <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
+                        <div class="text-3xl font-black text-white" id="pp-total-routes-dist">0</div>
+                        <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">最長航線 Longest Routes</div>
+                    </div>
+                    <div id="list-routes-dist" class="space-y-3"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -457,8 +464,8 @@
             let stats = {
                 totalKm: 0, totalHours: 0, completedFlights: 0, domCount: 0, intCount: 0, longCount: 0,
                 shortest: { route: '', dist: Infinity }, longest: { route: '', dist: -Infinity },
-                freq: { airports: {}, airlines: {}, routes: {}, directedRoutes: {}, aircrafts: {} }, // 👈 新增 directedRoutes 紀錄單向
-                airportFlightsInfo: {}, airportStats: {}, 
+                freq: { airports: {}, airlines: {}, routes: {}, directedRoutes: {}, aircrafts: {} }, 
+                undirectedRouteDistances: {}, observedDirectedRoutes: new Set(),
                 seatStats: { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 },
                 yearlyDist: {}, monthlyCount: new Array(12).fill(0), takeoffStats: new Array(24).fill(0), landingStats: new Array(24).fill(0),
                 timeline: [], tripsCount: 0, timezonesCrossed: 0
@@ -479,6 +486,11 @@
                 const dist = f.distance, routeName = `${f.origin_code} ✈️ ${f.dest_code}`;
                 const routeKey = [f.origin_code, f.dest_code].sort().join('-'); // 無向航線 (用於右下角排行榜)
                 const directedRouteKey = `${f.origin_code}-${f.dest_code}`;     // 單向航線 (用於精算真實重複率)
+                if (!stats.undirectedRouteDistances[routeKey]) {
+                    const greatCircle = turf.greatCircle(orig.coords, dest.coords);
+                    stats.undirectedRouteDistances[routeKey] = turf.length(greatCircle, {units: 'kilometers'});
+                }
+                stats.observedDirectedRoutes.add(directedRouteKey);
                 
                 stats.totalKm += dist; stats.completedFlights++;
                 if(f.flight_hours) stats.totalHours += parseFloat(f.flight_hours);
@@ -666,6 +678,35 @@
             const sTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
             sTxt('pp-total-aircraft', renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600'));
             sTxt('pp-total-routes', renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]'));
+            const allDirectedRoutes = Array.from(stats.observedDirectedRoutes)
+                .map(key => {
+                    const undirectedKey = key.split('-').sort().join('-');
+                    return { key, dist: stats.undirectedRouteDistances[undirectedKey] };
+                });
+
+            // 依距離從遠到近排序
+            allDirectedRoutes.sort((a, b) => b.dist - a.dist);
+            
+            // 更新總單向航線數量標題
+            sTxt('pp-total-routes-dist', allDirectedRoutes.length);
+
+            // 渲染進新的 HTML 容器，並套用匹配 image_1.png 的樣式
+            const routesDistListEl = document.getElementById('list-routes-dist');
+            if (routesDistListEl) {
+                const maxDist = allDirectedRoutes.length > 0 ? allDirectedRoutes[0].dist : 1;
+                routesDistListEl.innerHTML = allDirectedRoutes.slice(0, 15).map(item => {
+                    const roundedDist = Math.round(item.dist);
+                    return `
+                        <div class="flex items-center text-sm">
+                            <div class="w-40 sm:w-48 font-bold truncate pr-2">${item.key}</div>
+                            <div class="flex-1 min-w-0 flex items-center gap-2">
+                                <div class="bg-[#7e57c2] h-6 rounded-r-md" style="width:${(item.dist/maxDist)*100}%"></div>
+                                <span class="text-xs font-bold text-gray-400 whitespace-nowrap">${roundedDist.toLocaleString()} km</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
             sTxt('pp-total-airports', renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]'));
             sTxt('pp-total-airlines', renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', true));
 
