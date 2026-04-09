@@ -488,7 +488,7 @@
                 const dist = f.distance, routeName = `${f.origin_code} ✈️ ${f.dest_code}`;
                 const routeKey = [f.origin_code, f.dest_code].sort().join('-'); // 無向航線 (用於右下角排行榜)
                 const directedRouteKey = `${f.origin_code}-${f.dest_code}`;     // 單向航線 (用於精算真實重複率)
-                
+                stats.undirectedRouteDistances[routeKey] = Math.round(dist);
                 
                 stats.totalKm += dist; stats.completedFlights++;
                 if(f.flight_hours) stats.totalHours += parseFloat(f.flight_hours);
@@ -678,6 +678,7 @@
             sTxt('pp-total-routes', renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]'));
             sTxt('pp-total-airports', renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]'));
             sTxt('pp-total-airlines', renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', true));
+            sTxt('pp-total-routes-dist', renderList(stats.undirectedRouteDistances, 'list-routes-dist', 'bg-[#facc15]'));    
 
             const renderPolar = (ctxId, data, isTakeoff) => {
                 if(window[`chart_${ctxId}`]) window[`chart_${ctxId}`].destroy();
