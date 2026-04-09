@@ -678,35 +678,7 @@
             const sTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
             sTxt('pp-total-aircraft', renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600'));
             sTxt('pp-total-routes', renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]'));
-            const allDirectedRoutes = Array.from(stats.observedDirectedRoutes)
-                .map(key => {
-                    const undirectedKey = key.split('-').sort().join('-');
-                    return { key, dist: stats.undirectedRouteDistances[undirectedKey] };
-                });
-
-            // 依距離從遠到近排序
-            allDirectedRoutes.sort((a, b) => b.dist - a.dist);
             
-            // 更新總單向航線數量標題
-            sTxt('pp-total-routes-dist', allDirectedRoutes.length);
-
-            // 渲染進新的 HTML 容器，並套用匹配 image_1.png 的樣式
-            const routesDistListEl = document.getElementById('list-routes-dist');
-            if (routesDistListEl) {
-                const maxDist = allDirectedRoutes.length > 0 ? allDirectedRoutes[0].dist : 1;
-                routesDistListEl.innerHTML = allDirectedRoutes.slice(0, 15).map(item => {
-                    const roundedDist = Math.round(item.dist);
-                    return `
-                        <div class="flex items-center text-sm">
-                            <div class="w-40 sm:w-48 font-bold truncate pr-2">${item.key}</div>
-                            <div class="flex-1 min-w-0 flex items-center gap-2">
-                                <div class="bg-[#7e57c2] h-6 rounded-r-md" style="width:${(item.dist/maxDist)*100}%"></div>
-                                <span class="text-xs font-bold text-gray-400 whitespace-nowrap">${roundedDist.toLocaleString()} km</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
             sTxt('pp-total-airports', renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]'));
             sTxt('pp-total-airlines', renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', true));
 
