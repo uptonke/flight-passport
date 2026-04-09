@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+     <!DOCTYPE html>
     <html lang="zh-TW">
     <head>
         <meta charset="UTF-8">
@@ -834,7 +834,9 @@
                 content.classList.add('opacity-0', 'h-0', 'mt-0'); icon.style.transform = 'rotate(180deg)';
                 setTimeout(() => content.classList.add('hidden'), 500); 
             }
-            // 🔥 手機版 Header 折疊引擎
+        }; // ✅ 讓 toggleDashboard 在這裡先結束！
+
+        // 🔥 手機版 Header 折疊引擎 (獨立出來)
         window.toggleHeader = function() {
             if (window.innerWidth >= 768) return; // 電腦版不觸發
             const content = document.getElementById('header-content');
@@ -843,7 +845,6 @@
             if (content.classList.contains('hidden')) {
                 // 展開
                 content.classList.remove('hidden'); 
-                // 延遲讓 DOM 註冊 display: flex 後，再觸發透明度與高度的動畫
                 setTimeout(() => {
                     content.classList.remove('opacity-0', 'max-h-0');
                     content.classList.add('opacity-100', 'max-h-[500px]');
@@ -854,12 +855,10 @@
                 content.classList.remove('opacity-100', 'max-h-[500px]');
                 content.classList.add('opacity-0', 'max-h-0'); 
                 icon.style.transform = 'rotate(0deg)';
-                // 等待動畫結束後，將元素徹底隱藏
                 setTimeout(() => {
                     content.classList.add('hidden');
                 }, 500); 
             }
-        };
         };
         // 🔥 2D/3D 地圖投影切換引擎
         window.toggleProjection = function() {
