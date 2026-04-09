@@ -518,8 +518,11 @@
                 stats.freq.directedRoutes[directedRouteKey] = (stats.freq.directedRoutes[directedRouteKey]||0)+1; // 紀錄單向
                 if(f.airline) stats.freq.airlines[f.airline] = (stats.freq.airlines[f.airline]||0)+1;
                 if(f.airline) stats.freq.airlinesDist[f.airline] = (stats.freq.airlinesDist[f.airline]||0) + Math.round(dist);
-                if(f.aircraft_type) stats.freq.aircrafts[f.aircraft_type] = (stats.freq.aircrafts[f.aircraft_type]||0)+1;
-                if(f.aircraft_type) stats.freq.aircraftsDist[f.aircraft_type] = (stats.freq.aircraftsDist[f.aircraft_type]||0) + Math.round(dist);
+                if(f.aircraft_type) {
+                     let cleanType = f.aircraft_type.trim().toUpperCase();
+                      stats.freq.aircrafts[cleanType] = (stats.freq.aircrafts[cleanType]||0)+1;
+                     stats.freq.aircraftsDist[cleanType] = (stats.freq.aircraftsDist[cleanType]||0) + Math.round(dist);
+                }
 
                 if(f.seat_class) { stats.seatStats.class[f.seat_class] = (stats.seatStats.class[f.seat_class] || 0) + 1; stats.seatStats.validClasses++; }
                 if(f.seat_type) { stats.seatStats.type[f.seat_type] = (stats.seatStats.type[f.seat_type] || 0) + 1; stats.seatStats.validTypes++; }
