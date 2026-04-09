@@ -486,11 +486,7 @@
                 const dist = f.distance, routeName = `${f.origin_code} ✈️ ${f.dest_code}`;
                 const routeKey = [f.origin_code, f.dest_code].sort().join('-'); // 無向航線 (用於右下角排行榜)
                 const directedRouteKey = `${f.origin_code}-${f.dest_code}`;     // 單向航線 (用於精算真實重複率)
-                if (!stats.undirectedRouteDistances[routeKey]) {
-                    const greatCircle = turf.greatCircle(orig.coords, dest.coords);
-                    stats.undirectedRouteDistances[routeKey] = turf.length(greatCircle, {units: 'kilometers'});
-                }
-                stats.observedDirectedRoutes.add(directedRouteKey);
+                
                 
                 stats.totalKm += dist; stats.completedFlights++;
                 if(f.flight_hours) stats.totalHours += parseFloat(f.flight_hours);
