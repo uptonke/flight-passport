@@ -328,8 +328,9 @@
         let animate, stagger, spring;
         import("https://cdn.jsdelivr.net/npm/motion@11.11.13/+esm").then(module => {
             animate = module.animate; stagger = module.stagger; spring = module.spring;
-            initApp(); // 等待動畫引擎載入後，才啟動系統
-        });
+            }).catch(e => {
+    console.warn("動畫引擎載入失敗，使用降級模式");
+});
 
         const airlineDB = {
             'BR': '長榮航空 EVA Air', 'CI': '中華航空 China Airlines', 'JX': '星宇航空 STARLUX', 
@@ -468,7 +469,8 @@
                 undirectedRouteDistances: {}, observedDirectedRoutes: new Set(),
                 seatStats: { class: { 'Economy': 0, 'Premium Economy': 0, 'Business': 0, 'First Class': 0 }, type: { 'Window': 0, 'Middle': 0, 'Aisle': 0 }, exitRows: 0, validClasses: 0, validTypes: 0 },
                 yearlyDist: {}, monthlyCount: new Array(12).fill(0), takeoffStats: new Array(24).fill(0), landingStats: new Array(24).fill(0),
-                timeline: [], tripsCount: 0, timezonesCrossed: 0
+                timeline: [], tripsCount: 0, timezonesCrossed: 0,
+                airportStats: {}, airportFlightsInfo: {} 
             };
 
             const validFlights = flights.filter(f => f.origin_code && f.dest_code && airportDB[f.origin_code] && airportDB[f.dest_code]);
