@@ -23,6 +23,29 @@
         </style>
     </head>
     <body class="font-sans antialiased text-white select-none">
+        <div id="login-overlay" class="fixed inset-0 bg-[#000] z-[9999] flex items-center justify-center p-4 transition-opacity duration-500">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-sm border border-white/20 shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="text-5xl mb-3">✈️</div>
+                <h2 class="text-2xl font-black text-white tracking-widest">FLIGHT LOG</h2>
+                <div class="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-widest">Secure Access Only</div>
+            </div>
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase font-bold">Email</label>
+                    <input type="email" id="login-email" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-sky-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase font-bold">Password</label>
+                    <input type="password" id="login-password" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-sky-500 transition-colors">
+                </div>
+                <div id="login-error" class="text-xs text-red-400 hidden text-center bg-red-400/10 py-2 rounded"></div>
+                <button type="submit" id="login-btn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-black py-3 rounded-xl mt-6 transition-colors tracking-wider">
+                    LOGIN 登入
+                </button>
+            </form>
+        </div>
+    </div>
     <datalist id="iata-list"></datalist>
     <div id="map"></div>
 
@@ -41,6 +64,7 @@
             <button onclick="toggleNightMode()" id="btn-night-toggle" class="text-xs font-bold text-yellow-400 hover:text-white transition-colors">切換夜景燈光</button>
             <button onclick="toggleProjection()" id="btn-projection-toggle" class="text-xs font-bold text-sky-400 hover:text-white transition-colors">切換平面 2D</button>
             <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">匯出 CSV</button>
+            <button onclick="handleLogout()" class="text-xs font-bold text-red-400 hover:text-red-300 transition-colors">登出 Logout</button>
             <label class="text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer">
                 匯入 CSV
                 <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="importCSV(event)">
@@ -219,14 +243,89 @@
             </div>
 
     <script>
-        // ==========================================
-        // 🌍 Globals & Framer Motion Setup
-        // ==========================================
+       // 🌍 Globals & Framer Motion Setup
         const MAPBOX_TOKEN = 'pk.eyJ1IjoidXB0b25rZSIsImEiOiJjbW5sNnNwajAxNnY2MnJvZ3kzcDNqN2NlIn0.oriWVIXM8Oy80ZExDHSJUA';
         mapboxgl.accessToken = MAPBOX_TOKEN; 
         const SUPABASE_URL = 'https://yrccanqxzrcoknzabifz.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_lDfwRDxgMhzRwVk0-Qu3vg_9HTmTFZy';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ==========================================
+        // 🔒 Auth & Session Management (新增的驗證機制)
+        // ==========================================
+        
+        // 1. 檢查是否有登入 Session
+        async function checkAuth() {
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
+            if (session) {
+                hideLoginOverlay();
+                initApp(); // 如果已登入，啟動主程式
+            } else {
+                // 沒登入就乖乖停在登入畫面，什麼都不做
+                document.getElementById('login-overlay').style.display = 'flex';
+            }
+        }
+
+        // 2. 處理登入動作
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+            const errorDiv = document.getElementById('login-error');
+
+            btn.innerText = 'AUTHENTICATING...';
+            errorDiv.classList.add('hidden');
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                errorDiv.innerText = 'Access Denied: ' + error.message;
+                errorDiv.classList.remove('hidden');
+                btn.innerText = 'LOGIN 登入';
+            } else {
+                hideLoginOverlay();
+                initApp(); // 登入成功，啟動主程式
+            }
+        }
+
+        // 3. 登出動作
+        async function handleLogout() {
+            await supabaseClient.auth.signOut();
+            window.location.reload(); // 刷新頁面，重置所有狀態
+        }
+
+        // 4. 隱藏登入畫面的動畫
+        function hideLoginOverlay() {
+            const overlay = document.getElementById('login-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => { overlay.style.display = 'none'; }, 500);
+        }
+
+        // 網頁一載入，馬上執行權限檢查
+        document.addEventListener('DOMContentLoaded', checkAuth);
+
+
+        // ==========================================
+        // 🚀 Main Application Logic
+        // ==========================================
+        
+        function initApp() {
+            // ⚠️ 請把你原本寫在這裡的「載入 Mapbox 地圖」、「撈取 Supabase 資料 (select)」、「畫 Chart.js」的程式碼，
+            // ⚠️ 全 部 移 到 這 個 Function 裡 面！
+            // 這樣才能確保是「登入拿到 Token 後」才去戳資料庫。
+            
+            console.log("System Initialized. Fetching data...");
+            // map = new mapboxgl.Map({...});
+            // fetchFlightData();
+        }
+
+        // 你原本的 submitFlight 等 function 可以留在外面，因為它們也是被點擊時才觸發
+        async function submitFlight(event) { ... }
+
 
         // 🚨 統一在這裡宣告，確保沒有重複的 let
         let airportDB = {}; 
