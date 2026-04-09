@@ -1,30 +1,34 @@
-    <!DOCTYPE html>
-    <html lang="zh-TW">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>飛行紀錄 Flight Log ✈️</title>
-        <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
-        <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
-        <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <style>
-            body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
-            #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-            .glass-panel { background: rgba(20, 20, 22, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
-            .flighty-panel { background: #0f0f13; max-height: 85vh; overflow-y: auto; }
-            .mapboxgl-ctrl-logo, .mapboxgl-ctrl-bottom-right { display: none !important; }
-            ::-webkit-scrollbar { width: 6px; }
-            ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
-            .mapboxgl-popup-content { background: rgba(30, 30, 34, 0.95); backdrop-filter: blur(10px); color: white; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); padding: 12px; max-height: 250px; overflow-y: auto; }
-            .mapboxgl-popup-tip { border-top-color: rgba(30, 30, 34, 0.95) !important; }
-        </style>
-    </head>
-    <body class="font-sans antialiased text-white select-none">
-        <div id="login-overlay" class="fixed inset-0 bg-[#000] z-[9999] flex items-center justify-center p-4 transition-opacity duration-500">
-        <div class="glass-panel p-8 rounded-3xl w-full max-w-sm border border-white/20 shadow-2xl">
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>飛行紀錄 Flight Log ✈️</title>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .glass-panel { background: rgba(20, 20, 22, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .flighty-panel { background: #0f0f13; max-height: 85vh; overflow-y: auto; }
+        .mapboxgl-ctrl-logo, .mapboxgl-ctrl-bottom-right { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+        /* 新增：隱藏特定區塊的滾動條但保持可滑動 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .mapboxgl-popup-content { background: rgba(30, 30, 34, 0.95); backdrop-filter: blur(10px); color: white; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); padding: 12px; max-height: 250px; overflow-y: auto; }
+        .mapboxgl-popup-tip { border-top-color: rgba(30, 30, 34, 0.95) !important; }
+    </style>
+</head>
+<body class="font-sans antialiased text-white select-none">
+    <div id="login-overlay" class="fixed inset-0 bg-[#000] z-[9999] flex items-center justify-center p-4 transition-opacity duration-500">
+        <div class="glass-panel p-6 md:p-8 rounded-3xl w-full max-w-sm border border-white/20 shadow-2xl">
             <div class="text-center mb-8">
                 <div class="text-5xl mb-3">✈️</div>
                 <h2 class="text-2xl font-black text-white tracking-widest">FLIGHT LOG</h2>
@@ -49,32 +53,34 @@
     <datalist id="iata-list"></datalist>
     <div id="map"></div>
 
-    <div id="ui-header" class="absolute top-6 left-6 right-6 flex justify-between items-start z-10 pointer-events-none opacity-0">
-        <div class="glass-panel px-6 py-4 rounded-2xl pointer-events-auto flex items-center gap-4">
-            <div>
+    <div id="ui-header" class="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 flex justify-between items-start gap-2 md:gap-4 z-10 pointer-events-none opacity-0">
+        <div class="glass-panel px-3 py-2 md:px-6 md:py-4 rounded-xl md:rounded-2xl pointer-events-auto flex items-center gap-3 w-full overflow-x-auto no-scrollbar shadow-lg">
+            <div class="shrink-0">
                 <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">系統狀態 System</div>
-                <div class="text-xl font-black flex items-center gap-2" id="db-status">載入引擎...</div>
+                <div class="text-sm md:text-xl font-black flex items-center gap-2" id="db-status">載入引擎...</div>
             </div>
-            <div class="h-8 w-px bg-white/20 mx-2"></div>
-            <button onclick="toggleNightMode()" id="btn-night-toggle" class="text-xs font-bold text-yellow-400 hover:text-white transition-colors">切換夜景燈光</button>
-            <div class="h-8 w-px bg-white/20 mx-2"></div>
+            <div class="h-6 md:h-8 w-px bg-white/20 mx-1 md:mx-2 shrink-0"></div>
             
-            <button onclick="toggleFleetRadar()" id="btn-fleet-radar" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">🛸 啟動全機隊雷達</button>
+            <button onclick="toggleFleetRadar()" id="btn-fleet-radar" class="text-xs font-bold text-gray-300 hover:text-white transition-colors shrink-0 whitespace-nowrap">🛸 啟動全機隊雷達</button>
+            <div class="h-6 md:h-8 w-px bg-white/20 mx-1 md:mx-2 shrink-0"></div>
             
-            <button onclick="toggleNightMode()" id="btn-night-toggle" class="text-xs font-bold text-yellow-400 hover:text-white transition-colors">切換夜景燈光</button>
-            <button onclick="toggleProjection()" id="btn-projection-toggle" class="text-xs font-bold text-sky-400 hover:text-white transition-colors">切換平面 2D</button>
-            <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors">匯出 CSV</button>
-            <button onclick="handleLogout()" class="text-xs font-bold text-red-400 hover:text-red-300 transition-colors">登出 Logout</button>
-            <label class="text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer">
+            <button onclick="toggleNightMode()" id="btn-night-toggle" class="text-xs font-bold text-yellow-400 hover:text-white transition-colors shrink-0 whitespace-nowrap">切換夜景燈光</button>
+            <button onclick="toggleProjection()" id="btn-projection-toggle" class="text-xs font-bold text-sky-400 hover:text-white transition-colors shrink-0 whitespace-nowrap">切換平面 2D</button>
+            <button onclick="exportCSV()" class="text-xs font-bold text-gray-300 hover:text-white transition-colors shrink-0 whitespace-nowrap">匯出 CSV</button>
+            <button onclick="handleLogout()" class="text-xs font-bold text-red-400 hover:text-red-300 transition-colors shrink-0 whitespace-nowrap">登出 Logout</button>
+            <label class="text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer shrink-0 whitespace-nowrap">
                 匯入 CSV
                 <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="importCSV(event)">
             </label>
         </div>
-        <button onclick="openAddModal()" class="glass-panel px-6 py-4 rounded-2xl pointer-events-auto hover:bg-white/10 transition-all flex items-center gap-2">
-            <span class="text-xl font-black text-sky-400">+ 新增 Add Flight</span>
+        
+        <button onclick="openAddModal()" class="glass-panel px-3 py-2 md:px-6 md:py-4 rounded-xl md:rounded-2xl pointer-events-auto hover:bg-white/10 transition-all flex items-center justify-center shrink-0 shadow-lg gap-2">
+            <span class="md:hidden text-lg font-black text-sky-400">➕</span>
+            <span class="hidden md:inline text-xl font-black text-sky-400 whitespace-nowrap">+ 新增 Add Flight</span>
         </button>
     </div>
-    <div id="main-dashboard" class="absolute bottom-4 right-4 left-4 md:left-auto md:right-8 md:bottom-8 glass-panel p-5 md:p-6 rounded-3xl z-10 md:w-80 shadow-2xl flex flex-col max-h-[65vh] md:max-h-[85vh] opacity-0 translate-y-10 transition-all duration-500">
+
+    <div id="main-dashboard" class="absolute bottom-4 right-4 left-4 md:left-auto md:right-8 md:bottom-8 glass-panel p-4 md:p-6 rounded-2xl md:rounded-3xl z-10 md:w-80 shadow-2xl flex flex-col max-h-[55vh] md:max-h-[85vh] opacity-0 translate-y-10 transition-all duration-500">
         <div class="flex justify-between items-center border-b border-white/10 pb-3 md:pb-4 shrink-0 cursor-pointer md:cursor-default" onclick="toggleDashboard()">
             <div><div class="text-base md:text-lg font-black tracking-widest">FLIGHT DASHBOARD</div></div>
             <div id="dash-toggle-icon" class="md:hidden text-gray-400 bg-white/10 rounded-full w-8 h-8 flex items-center justify-center text-xs transition-transform">🔽</div>
@@ -88,31 +94,31 @@
             </div>
             <button onclick="toggleModal('passportModal')" class="w-full bg-[#5e35b1] hover:bg-[#673ab7] text-white font-bold py-3 rounded-xl mb-4 transition-colors">打開 Open</button>
             <div class="text-xs text-gray-400 uppercase font-bold mb-2 shrink-0">近期日誌 Recent Logs</div>
-            <div class="flex gap-2 overflow-x-auto pb-2 mb-2 shrink-0 text-xs font-bold" id="year-filters"></div>
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-2 shrink-0 text-xs font-bold" id="year-filters"></div>
             <div id="flight-list" class="overflow-y-auto space-y-2 pr-1 flex-1 pb-2"></div>
         </div>
     </div>
 
     <div id="passportModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex justify-center p-4 overflow-y-auto">
-        <div class="flighty-panel modal-panel p-6 sm:py-10 sm:px-12 rounded-[40px] w-full max-w-6xl shadow-2xl my-auto relative border border-white/10 opacity-0 scale-90">
+        <div class="flighty-panel modal-panel p-5 md:py-10 md:px-12 rounded-3xl md:rounded-[40px] w-full max-w-6xl shadow-2xl my-auto relative border border-white/10 opacity-0 scale-90">
             
-            <div class="relative z-10 flex justify-between items-center mb-10">
-                <h2 class="text-3xl font-black tracking-tighter">我的飛行紀錄 My flight logs</h2>
-                <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full">&times;</button>
+            <div class="relative z-10 flex justify-between items-center mb-6 md:mb-10">
+                <h2 class="text-2xl md:text-3xl font-black tracking-tighter">我的飛行紀錄 My flight logs</h2>
+                <button onclick="toggleModal('passportModal')" class="bg-white/10 hover:bg-white/20 p-2 rounded-full w-8 h-8 flex items-center justify-center">&times;</button>
             </div>
             
-            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 md:mb-12">
                 <div>
                     <div class="text-sm text-gray-400 font-bold mb-1">總飛行距離 Total Distance</div>
-                    <div class="text-6xl font-light tracking-tighter mb-4"><span id="pp-dist">0</span> <span class="text-2xl text-gray-500">km</span></div>
+                    <div class="text-4xl md:text-6xl font-light tracking-tighter mb-4"><span id="pp-dist">0</span> <span class="text-xl md:text-2xl text-gray-500">km</span></div>
                     <div class="space-y-3">
                         <div class="flex items-center gap-3 bg-white/5 p-3 rounded-2xl"><div class="text-xl">🌍</div><div class="w-full bg-black/50 h-2 rounded-full overflow-hidden"><div id="pp-earth-bar" class="bg-[#7e57c2] h-full bar-fill" style="width: 0%"></div></div><div class="text-sm font-bold whitespace-nowrap"><span id="pp-earth">0</span>x <span class="text-gray-400 text-xs">地球 Earth</span></div></div>
                         <div class="flex items-center gap-3 bg-white/5 p-3 rounded-2xl"><div class="text-xl">🌕</div><div class="w-full bg-black/50 h-2 rounded-full overflow-hidden"><div id="pp-moon-bar" class="bg-gray-400 h-full bar-fill" style="width: 0%"></div></div><div class="text-sm font-bold whitespace-nowrap"><span id="pp-moon">0</span>x <span class="text-gray-400 text-xs">月球 Moon</span></div></div>
                     </div>
                 </div>
                 <div class="flex flex-col justify-between">
-                    <div><div class="text-sm text-gray-400 font-bold mb-1">總時長 Total Time</div><div class="text-5xl font-light tracking-tighter" id="pp-time-main">0h 0m</div></div>
-                    <div class="grid grid-cols-2 gap-4 mt-6">
+                    <div><div class="text-sm text-gray-400 font-bold mb-1">總時長 Total Time</div><div class="text-4xl md:text-5xl font-light tracking-tighter" id="pp-time-main">0h 0m</div></div>
+                    <div class="grid grid-cols-2 gap-3 md:gap-4 mt-6">
                         <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">滯空天數 Days in Air</div><div class="text-xl font-bold mt-1" id="pp-days">0</div></div>
                         <div class="bg-white/5 p-3 rounded-xl flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">平均航程 Avg Flight</div><div class="text-xl font-bold mt-1" id="pp-avg-time">0h</div></div>
                         <div class="bg-white/5 p-3 rounded-xl border border-[#5e35b1]/30 flex flex-col justify-center"><div class="text-[10px] text-gray-400 uppercase">滯空時間 In Air</div><div class="text-xl font-bold mt-1" id="pp-in-air">0h</div></div>
@@ -123,7 +129,7 @@
                     </div>
                 </div>
             </div>
-            <div class="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10 md:mb-12">
                 <div class="bg-white/5 p-5 rounded-3xl flex flex-col justify-center items-center text-center">
                     <div class="text-xs text-gray-400 uppercase font-bold mb-2">🔁 舊航線重飛率</div>
                     <div class="text-3xl font-black text-white"><span id="pp-rep-route">0</span><span class="text-lg text-gray-500">%</span></div>
@@ -141,25 +147,25 @@
                 </div>
             </div>
 
-            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-10 md:mb-12">
                 <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">起飛時段 Takeoff (24H)</div><div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-takeoff"></canvas></div></div>
                 <div class="bg-white/5 p-6 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">降落時段 Landing (24H)</div><div class="w-full max-w-[250px] aspect-square relative"><canvas id="chart-landing"></canvas></div></div>
             </div>
 
-            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-10 md:mb-12">
                 <div class="bg-white/5 p-5 rounded-3xl"><div class="text-xs text-gray-400 uppercase font-bold mb-3">年度趨勢 Yearly Trend</div><canvas id="chart-yearly" class="w-full h-32"></canvas></div>
                 <div class="bg-white/5 p-5 rounded-3xl"><div class="text-xs text-gray-400 uppercase font-bold mb-3">月度熱力 Monthly Heat</div><canvas id="chart-monthly" class="w-full h-32"></canvas></div>
             </div>
 
-            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-10 md:mb-12">
                 <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">艙等 Class</div><div id="chart-class" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常搭乘</span><span class="font-bold text-sm px-2" id="top-class-name">--</span></div></div><div id="legend-class" class="w-full space-y-1 text-xs"></div></div>
                 <div class="bg-white/5 p-5 rounded-3xl flex flex-col items-center"><div class="text-xs text-gray-400 uppercase font-bold mb-4 self-start">座位 Seat</div><div id="chart-seat" class="relative w-32 h-32 rounded-full mb-4" style="background: conic-gradient(#333 0deg, #333 360deg);"><div class="absolute inset-3 bg-[#0f0f13] rounded-full flex flex-col items-center justify-center text-center"><span class="text-[10px] text-gray-400">最常劃位</span><span class="font-bold text-sm" id="top-seat-name">--</span></div></div><div id="legend-seat" class="w-full space-y-1 text-xs"></div><div class="mt-4 pt-3 border-t w-full flex justify-between"><span class="text-gray-400">逃生門 Exit Row</span><span class="font-bold text-[#facc15]" id="stat-exit-row">0</span></div></div>
             </div>
 
-            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-y-8 md:gap-x-12 md:gap-y-12">
                 <div>
                     <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
-                        <div class="text-3xl font-black text-white" id="pp-total-aircraft">0</div>
+                        <div class="text-2xl md:text-3xl font-black text-white" id="pp-total-aircraft">0</div>
                         <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">機型 Top Aircraft</div>
                     </div>
                     <div id="list-aircraft" class="space-y-3"></div>
@@ -167,14 +173,14 @@
                 
                 <div>
                     <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
-                        <div class="text-3xl font-black text-white" id="pp-total-aircraft-dist">0</div>
+                        <div class="text-2xl md:text-3xl font-black text-white" id="pp-total-aircraft-dist">0</div>
                         <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">機型里程 Top Aircraft Dist (km)</div>
                     </div>
                     <div id="list-aircraft-dist" class="space-y-3"></div>
                 </div>
                 <div>
                     <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
-                        <div class="text-3xl font-black text-white" id="pp-total-airports">0</div>
+                        <div class="text-2xl md:text-3xl font-black text-white" id="pp-total-airports">0</div>
                         <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">機場 Top Airports</div>
                     </div>
                     <div id="list-airports" class="space-y-3"></div>
@@ -182,31 +188,29 @@
                 
                 <div>
                     <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
-                        <div class="text-3xl font-black text-white" id="pp-total-airlines">0</div>
+                        <div class="text-2xl md:text-3xl font-black text-white" id="pp-total-airlines">0</div>
                         <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">航空公司 Top Airlines</div>
                     </div>
                     <div id="list-airlines" class="space-y-3"></div>
-                    
                 </div>
                 <div>
                     <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
-                     <div class="text-3xl font-black text-white" id="pp-total-airlines-dist">0</div>
+                     <div class="text-2xl md:text-3xl font-black text-white" id="pp-total-airlines-dist">0</div>
                      <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">航司里程 Top Airline Dist (km)</div>
                  </div>
-    <div id="list-airlines-dist" class="space-y-3"></div>
+                 <div id="list-airlines-dist" class="space-y-3"></div>
                 </div>
-                
                 
                 <div>
                     <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
-                        <div class="text-3xl font-black text-white" id="pp-total-routes">0</div>
+                        <div class="text-2xl md:text-3xl font-black text-white" id="pp-total-routes">0</div>
                         <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">航線 Top Routes</div>
                     </div>
                     <div id="list-routes" class="space-y-3"></div>
                 </div>
                 <div>
                     <div class="flex items-baseline gap-2 mb-4 border-b border-white/10 pb-2">
-                        <div class="text-3xl font-black text-white" id="pp-total-routes-dist">0</div>
+                        <div class="text-2xl md:text-3xl font-black text-white" id="pp-total-routes-dist">0</div>
                         <div class="text-gray-400 font-bold uppercase tracking-wider text-xs">最長航線 Longest Routes</div>
                     </div>
                     <div id="list-routes-dist" class="space-y-3"></div>
@@ -214,30 +218,29 @@
             </div>
         </div>
     </div>
-    <!-- ✅ passportModal 到此結束，addFlightModal 是獨立的平級 modal -->
 
     <div id="addFlightModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="glass-panel modal-panel p-8 rounded-3xl w-full max-w-md border border-white/20 overflow-y-auto max-h-[90vh] opacity-0 scale-90">
+        <div class="glass-panel modal-panel p-6 md:p-8 rounded-2xl md:rounded-3xl w-full max-w-md border border-white/20 overflow-y-auto max-h-[90vh] opacity-0 scale-90">
             <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-                <h2 class="text-2xl font-bold">新增航班 Add Flight</h2>
-                <button onclick="toggleModal('addFlightModal')" class="text-gray-400 hover:text-white text-xl">&times;</button>
+                <h2 class="text-xl md:text-2xl font-bold">新增航班 Add Flight</h2>
+                <button onclick="toggleModal('addFlightModal')" class="text-gray-400 hover:text-white text-2xl w-8 h-8 flex items-center justify-center">&times;</button>
             </div>
-            <form id="flightForm" class="space-y-5" onsubmit="submitFlight(event)">
+            <form id="flightForm" class="space-y-4 md:space-y-5" onsubmit="submitFlight(event)">
                 <div><label for="inp-date" class="block text-xs text-gray-400 mb-1">日期 Date</label><input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-3 md:gap-4">
                     <div><label for="inp-takeoff" class="block text-xs text-gray-400 mb-1">起飛 Takeoff</label><input type="time" id="inp-takeoff" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
                     <div><label for="inp-landing" class="block text-xs text-gray-400 mb-1">降落 Landing</label><input type="time" id="inp-landing" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                     <div><label for="inp-origin" class="block text-xs text-gray-400 mb-1">出發地 Origin</label><input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
                     <div><label for="inp-dest" class="block text-xs text-gray-400 mb-1">目的地 Dest</label><input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3"></div>
                 </div>
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                     <div><label for="inp-airline" class="block text-xs text-gray-400 mb-1">航司 Airline</label><input type="text" id="inp-airline" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
                     <div><label for="inp-flight-number" class="block text-xs text-gray-400 mb-1">航班號 Flight No.</label><input type="text" id="inp-flight-number" class="w-full bg-white/10 rounded-lg px-3 py-2 uppercase"></div>
                     <div><label for="inp-type" class="block text-xs text-gray-400 mb-1">機型 Aircraft</label><input type="text" id="inp-type" class="w-full bg-white/10 rounded-lg px-3 py-2"></div>
                 </div>
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                     <div>
                         <label for="inp-seat-class" class="block text-xs text-gray-400 mb-1">艙等 Class</label>
                         <select id="inp-seat-class" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white"><option value="">未指定 None</option><option value="Economy">經濟艙 Economy</option><option value="Premium Economy">豪華經濟艙 Premium</option><option value="Business">商務艙 Business</option><option value="First Class">頭等艙 First Class</option></select>
@@ -257,14 +260,16 @@
             <div class="mt-8 pt-6 border-t border-sky-500/30">
                 <div class="text-xs text-sky-400 font-bold mb-3 uppercase tracking-wider">🛠️ 軌跡工程模式 Track Engineering</div>
                 <div class="text-[10px] text-gray-500 mb-2">從 Flightradar24 匯出 CSV，永久綁定真實高解析度軌跡</div>
-                <div class="flex gap-2">
-                    <input type="text" id="csv-flight-id" placeholder="航班 ID (見近期日誌)" class="w-1/3 bg-[#1e1e20] border border-sky-500/30 rounded px-2 py-2 text-xs text-white text-center font-bold">
-                    <label class="w-2/3 bg-sky-500/20 hover:bg-sky-500/40 text-sky-400 border border-sky-500/50 font-bold py-2 rounded-lg text-xs transition-colors cursor-pointer text-center flex items-center justify-center">
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="csv-flight-id" placeholder="航班 ID (見近期日誌)" class="w-full sm:w-1/3 bg-[#1e1e20] border border-sky-500/30 rounded px-2 py-2 text-xs text-white text-center font-bold">
+                    <label class="w-full sm:w-2/3 bg-sky-500/20 hover:bg-sky-500/40 text-sky-400 border border-sky-500/50 font-bold py-2 rounded-lg text-xs transition-colors cursor-pointer text-center flex items-center justify-center">
                         <span id="csv-upload-btn-text">📂 選擇 CSV 並上傳</span>
                         <input type="file" id="track-csv-upload" accept=".csv" class="hidden" onchange="processCSVTrack(event)">
                     </label>
                 </div>
             </div>
+        </div>
+    </div>
 
     <script>
        // 🌍 Globals & Framer Motion Setup
@@ -274,32 +279,25 @@
         const SUPABASE_KEY = 'sb_publishable_lDfwRDxgMhzRwVk0-Qu3vg_9HTmTFZy';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // 🚨 統一在這裡宣告，確保沒有重複的 let
         let airportDB = {}; 
         let editingFlightId = null;
         let currentYearFilter = 'ALL';
         let animationState = { startTime: 0, planes: [], isRunning: false };
-        let isAppInitialized = false; // 防呆機制
-        let isGlobe = true; // 控制 2D/3D 切換狀態
+        let isAppInitialized = false;
+        let isGlobe = true;
         let isNightMode = false;
 
-        // ==========================================
-        // 🔒 Auth & Session Management (新增的驗證機制)
-        // ==========================================
-        
-        // 1. 檢查是否有登入 Session
+        // Auth & Session
         async function checkAuth() {
             const { data: { session }, error } = await supabaseClient.auth.getSession();
             if (session) {
                 hideLoginOverlay();
-                initApp(); // 如果已登入，啟動主程式
+                initApp();
             } else {
-                // 沒登入就乖乖停在登入畫面，什麼都不做
                 document.getElementById('login-overlay').style.display = 'flex';
             }
         }
 
-        // 2. 處理登入動作
         async function handleLogin(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -310,10 +308,7 @@
             btn.innerText = 'AUTHENTICATING...';
             errorDiv.classList.add('hidden');
 
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
 
             if (error) {
                 errorDiv.innerText = 'Access Denied: ' + error.message;
@@ -321,27 +316,24 @@
                 btn.innerText = 'LOGIN 登入';
             } else {
                 hideLoginOverlay();
-                initApp(); // 登入成功，啟動主程式
+                initApp();
             }
         }
 
-        // 3. 登出動作
         async function handleLogout() {
             await supabaseClient.auth.signOut();
-            window.location.reload(); // 刷新頁面，重置所有狀態
+            window.location.reload();
         }
 
-        // 4. 隱藏登入畫面的動畫
         function hideLoginOverlay() {
             const overlay = document.getElementById('login-overlay');
             overlay.style.opacity = '0';
             setTimeout(() => { overlay.style.display = 'none'; }, 500);
         }
 
-        // 網頁一載入，馬上執行權限檢查
         document.addEventListener('DOMContentLoaded', checkAuth);
 
-        // 🔥 導入 Framer Motion 原生版 (motion)
+        // Framer Motion
         let animate, stagger, spring;
         import("https://cdn.jsdelivr.net/npm/motion@11.11.13/+esm").then(module => {
             animate = module.animate; stagger = module.stagger; spring = module.spring;
@@ -375,26 +367,22 @@
             'EK': '阿聯酋航空 Emirates', 'QR': '卡達航空 Qatar Airways', 'EY': '阿提哈德航空 Etihad Airways'
         };
 
-        // ==========================================
-        // 1️⃣ Data Layer (資料層：模擬 React 狀態驅動)
-        // ==========================================
-        let flightsState = []; // 相當於 React 的 const [flights, setFlights]
+        let flightsState = [];
         const setFlights = (newData) => {
             flightsState = newData;
-            triggerReactRender(); // 資料改變，驅動 UI 重繪
+            triggerReactRender();
         };
 
         async function loadGlobalAirports() {
             const cachedDB = localStorage.getItem('airportDB_cache_v1');
             if (cachedDB) {
                 try {
-                    // 🔥 防呆：如果快取破圖解析失敗，直接攔截不讓系統當機
                     airportDB = JSON.parse(cachedDB);
                     renderAirportOptions(); 
                     return;
                 } catch (e) {
                     console.warn('快取字典損毀，已清除並重新下載');
-                    localStorage.removeItem('airportDB_cache_v1'); // 殺掉壞掉的快取
+                    localStorage.removeItem('airportDB_cache_v1');
                 }
             }
             
@@ -439,20 +427,15 @@
             const { data, error } = await supabaseClient.from('flights').select('*').order('flight_date', { ascending: false });
             if (!error) setFlights(data);
         }
-        // ==========================================
-        // 💾 Supabase 資料庫寫入與刪除 (補回遺失的函數)
-        // ==========================================
+
         async function saveFlight(payload, id = null) {
             try {
                 let result;
                 if (id) {
-                    // 有 ID 代表是「編輯更新」
                     result = await supabaseClient.from('flights').update(payload).eq('id', id);
                 } else {
-                    // 沒 ID 代表是「全新增」
                     result = await supabaseClient.from('flights').insert([payload]);
                 }
-                
                 if (result.error) throw result.error;
                 return true;
             } catch (error) {
@@ -475,9 +458,6 @@
             }
         }
 
-    // ==========================================
-        // 2️⃣ Calculation Layer (計算層：純粹處理邏輯)
-        // ==========================================
         function calculateStats(flights) {
             let stats = {
                 totalKm: 0, totalHours: 0, completedFlights: 0, domCount: 0, intCount: 0, longCount: 0,
@@ -503,8 +483,8 @@
                 const orig = airportDB[f.origin_code], dest = airportDB[f.dest_code];
                 f.distance ||= turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
                 const dist = f.distance, routeName = `${f.origin_code} ✈️ ${f.dest_code}`;
-                const routeKey = [f.origin_code, f.dest_code].sort().join('-'); // 無向航線 (用於右下角排行榜)
-                const directedRouteKey = `${f.origin_code}-${f.dest_code}`;     // 單向航線 (用於精算真實重複率)
+                const routeKey = [f.origin_code, f.dest_code].sort().join('-'); 
+                const directedRouteKey = `${f.origin_code}-${f.dest_code}`;     
                 stats.undirectedRouteDistances[routeKey] = Math.round(dist);
                 
                 stats.totalKm += dist; stats.completedFlights++;
@@ -516,7 +496,7 @@
                 
                 stats.freq.airports[f.origin_code] = (stats.freq.airports[f.origin_code]||0)+1; stats.freq.airports[f.dest_code] = (stats.freq.airports[f.dest_code]||0)+1;
                 stats.freq.routes[routeKey] = (stats.freq.routes[routeKey]||0)+1; 
-                stats.freq.directedRoutes[directedRouteKey] = (stats.freq.directedRoutes[directedRouteKey]||0)+1; // 紀錄單向
+                stats.freq.directedRoutes[directedRouteKey] = (stats.freq.directedRoutes[directedRouteKey]||0)+1; 
                 if(f.airline) stats.freq.airlines[f.airline] = (stats.freq.airlines[f.airline]||0)+1;
                 if(f.airline) stats.freq.airlinesDist[f.airline] = (stats.freq.airlinesDist[f.airline]||0) + Math.round(dist);
                 if(f.aircraft_type) {
@@ -548,27 +528,24 @@
 
                 stats.timezonesCrossed += Math.round(Math.abs(orig.coords[0] - dest.coords[0]) / 15);
 
-                // 🔥 淨水器：過濾 OpenSky 產生的 null 壞點
                 if (f.route_geojson && f.route_geojson.coordinates) {
-                    // 只保留經緯度都不是 null 且是有效數字的點
                     const cleanCoords = f.route_geojson.coordinates.filter(c => c && c[0] != null && c[1] != null && !isNaN(c[0]) && !isNaN(c[1]));
                     
                     if (cleanCoords.length > 1) {
                         f.routeCoords = cleanCoords;
-                        f.route_geojson.coordinates = cleanCoords; // 確保 turf 運算時也是乾淨的
+                        f.route_geojson.coordinates = cleanCoords; 
                         try {
                             f.distance = turf.length(f.route_geojson, {units: 'kilometers'});
                         } catch (e) {
                             f.distance = turf.distance(orig.coords, dest.coords, {units: 'kilometers'});
                         }
                     } else {
-                        f.routeCoords = null; // 點數被洗完後如果不足，直接打掉重練
+                        f.routeCoords = null; 
                     }
                 } else {
                     f.routeCoords = null;
                 }
 
-                // 🚨 備案啟動：沒有真實軌跡，或軌跡壞掉被洗空了，一律畫模擬大圓航線
                 if (!f.routeCoords) {
                     const route = turf.greatCircle(orig.coords, dest.coords); 
                     const lineDistance = turf.length(route);
@@ -585,7 +562,6 @@
                 f.routeColor = getRouteColor(stats.freq.routes[routeKey] || 1);
             });
 
-            // 🔥 利用單向航線計算，精準剔除單純的來回航班
             const uniqueDirectedRoutes = Object.keys(stats.freq.directedRoutes).length;
             stats.repeatedRoutePct = stats.completedFlights > 0 ? ((stats.completedFlights - uniqueDirectedRoutes) / stats.completedFlights * 100).toFixed(1) : 0;
             
@@ -605,9 +581,6 @@
         function getAirlineLogoUrl(code) { return (!code || code.length !== 2) ? null : `https://images.kiwi.com/airlines/64/${code.toUpperCase()}.png`; }
         function formatTimeString(hrs) { if(!hrs) return '0h 0m'; const h = Math.floor(hrs); return `${h}h ${Math.round((hrs - h) * 60)}m`; }
 
-        // ==========================================
-        // 3️⃣ UI Layer (視圖渲染與 Framer Motion)
-        // ==========================================
         function triggerReactRender() {
             let filtered = flightsState.filter(f => (currentYearFilter === 'ALL' || (f.flight_date && f.flight_date.startsWith(currentYearFilter))));
             const stats = calculateStats(filtered);
@@ -621,9 +594,9 @@
 
         function renderFilters() {
             const years = new Set(); flightsState.forEach(f => { if (f.flight_date) years.add(f.flight_date.substring(0, 4)); });
-            let html = `<button onclick="filterByYear('ALL')" class="${currentYearFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full">ALL</button>`;
+            let html = `<button onclick="filterByYear('ALL')" class="${currentYearFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full whitespace-nowrap">ALL</button>`;
             Array.from(years).sort().reverse().forEach(y => {
-                html += `<button onclick="filterByYear('${y}')" class="${currentYearFilter === y ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full">${y}</button>`;
+                html += `<button onclick="filterByYear('${y}')" class="${currentYearFilter === y ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full whitespace-nowrap">${y}</button>`;
             });
             document.getElementById('year-filters').innerHTML = html;
         }
@@ -650,7 +623,6 @@
             setTxt('pp-days', (stats.totalHours / 24).toFixed(1)); setTxt('pp-avg-time', formatTimeString(avg)); setTxt('pp-in-air', formatTimeString(stats.totalHours));
             setTxt('pp-total-flights-box', stats.completedFlights); setTxt('pp-dom', stats.domCount); setTxt('pp-int', stats.intCount); setTxt('pp-long', stats.longCount);
 
-            // 🚀 將 3 項新進階數據輸出到對應的 HTML 標籤上
             setTxt('pp-rep-route', stats.repeatedRoutePct);
             setTxt('pp-avg-flights', stats.avgFlightsPerYear);
             setTxt('pp-timezones', stats.timezonesCrossed);
@@ -678,7 +650,6 @@
                 </div>`;
         }).join('');
 
-        // 🔥 Framer Motion: List Stagger Animation
         if (animate && stagger) {
             animate(".flight-card", { x: [-30, 0], opacity: [0, 1] }, { delay: stagger(0.05), duration: 0.4, easing: "ease-out" });
         }
@@ -691,7 +662,7 @@
                 el.innerHTML = sorted.slice(0, 10).map(i => {
                     let name = i[0]; if(isLogo && airlineDB[name]) name = `${name} ${airlineDB[name]}`; else if(!isLogo && airportDB[name]) name = `${name} ${airportDB[name].city}`;
                     const lg = isLogo && getAirlineLogoUrl(i[0]) ? `<img src="${getAirlineLogoUrl(i[0])}" class="w-6 h-6 rounded-full bg-white/5 p-1 mr-3 shrink-0">` : '';
-                    return `<div class="flex items-center text-sm">${lg}<div class="w-40 sm:w-48 font-bold truncate pr-2">${name}</div><div class="flex-1 min-w-0"><div class="${colorCls} h-6 rounded-r-md flex items-center px-2 text-xs font-bold" style="width:${(i[1]/max)*100}%">${i[1]}</div></div></div>`;
+                    return `<div class="flex items-center text-sm">${lg}<div class="w-32 sm:w-48 font-bold truncate pr-2">${name}</div><div class="flex-1 min-w-0"><div class="${colorCls} h-6 rounded-r-md flex items-center px-2 text-xs font-bold" style="width:${(i[1]/max)*100}%">${i[1]}</div></div></div>`;
                 }).join('');
                 return sorted.length;
             };
@@ -702,7 +673,7 @@
             sTxt('pp-total-airports', renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]'));
             sTxt('pp-total-airlines', renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', true));
             sTxt('pp-total-airlines-dist', renderList(stats.freq.airlinesDist, 'list-airlines-dist', 'bg-blue-500', true));
-            sTxt('pp-total-routes-dist', renderList(stats.undirectedRouteDistances, 'list-routes-dist', 'bg-[#facc15]'));    
+            sTxt('pp-total-routes-dist', renderList(stats.undirectedRouteDistances, 'list-routes-dist', 'bg-[#facc15]'));   
 
             const renderPolar = (ctxId, data, isTakeoff) => {
                 if(window[`chart_${ctxId}`]) window[`chart_${ctxId}`].destroy();
@@ -713,7 +684,7 @@
                 });
             };
             renderPolar('chart-takeoff', stats.takeoffStats, true); renderPolar('chart-landing', stats.landingStats, false);
-            // 年度趨勢
+            
     if(window.chart_yearly) window.chart_yearly.destroy();
     const yearlyCtx = document.getElementById('chart-yearly');
     if(yearlyCtx) {
@@ -728,7 +699,6 @@
         });
     }
 
-    // 月度熱力
     if(window.chart_monthly) window.chart_monthly.destroy();
     const monthlyCtx = document.getElementById('chart-monthly');
     if(monthlyCtx) {
@@ -743,7 +713,6 @@
         });
     }
 
-    // 艙等圓餅
     const classColors = { 'Economy': '#3b82f6', 'Premium Economy': '#8b5cf6', 'Business': '#f59e0b', 'First Class': '#ef4444' };
     const classEntries = Object.entries(stats.seatStats.class).filter(([,v]) => v > 0);
     const classTotal = classEntries.reduce((a,[,v]) => a + v, 0);
@@ -766,7 +735,6 @@
         ).join('');
     }
 
-    // 座位圓餅
     const seatColors = { 'Window': '#22c55e', 'Middle': '#f97316', 'Aisle': '#06b6d4' };
     const seatEntries = Object.entries(stats.seatStats.type).filter(([,v]) => v > 0);
     const seatTotal = seatEntries.reduce((a,[,v]) => a + v, 0);
@@ -791,9 +759,6 @@
     }
         }
         
-
-        // 🔥 Modal Animation Engine
-        // 🔥 Modal Animation Engine
         window.toggleModal = function(id) {
             const el = document.getElementById(id);
             const panel = el.querySelector('.modal-panel');
@@ -824,7 +789,7 @@
                 setTimeout(() => content.classList.add('hidden'), 500); 
             }
         };
-        // 🔥 2D/3D 地圖投影切換引擎
+
         window.toggleProjection = function() {
             isGlobe = !isGlobe;
             map.setProjection({ name: isGlobe ? 'globe' : 'equirectangular' });
@@ -833,7 +798,6 @@
             if (btn) btn.innerText = isGlobe ? '切換平面 2D' : '切換地球 3D';
         };
 
-        // 🔥 地貌/夜景 一鍵切換引擎
         window.toggleNightMode = function() {
             isNightMode = !isNightMode;
             if (map.getLayer('nasa-black-marble-layer')) {
@@ -843,9 +807,6 @@
             if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
         };
 
-    // ==========================================
-        // 4️⃣ Map Layer (地圖與單一渲染引擎)
-        // ==========================================
         const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
 
         map.on('style.load', () => {
@@ -879,7 +840,6 @@
         });
 
         function renderMapFeatures(stats) {
-            // --- 1. Airports ---
             let airFeats = [];
             for (let [code, count] of Object.entries(stats.freq.airports)) {
                 if (airportDB[code]) airFeats.push({ type: 'Feature', properties: { code, count, name: airportDB[code].name, city: airportDB[code].city }, geometry: { type: 'Point', coordinates: airportDB[code].coords } });
@@ -905,7 +865,6 @@
                 });
             }
 
-    // --- 2. Routes & Animation ---
             if (map.getStyle()) { map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-')) map.removeLayer(l.id); }); Object.keys(map.getStyle().sources).forEach(s => { if (s.startsWith('r-')) map.removeSource(s); }); }
             animationState.planes.forEach(p => p.marker.remove()); 
             
@@ -1003,9 +962,7 @@
             console.warn('無法聚焦此航線', e);
         }
     }
-        // ==========================================
-        // Controller & UI Actions
-        // ==========================================
+
         async function initApp() {
             document.getElementById('db-status').innerText = '載入字典...';
             await loadGlobalAirports();
@@ -1014,13 +971,12 @@
                 await fetchFlights();
                 isAppInitialized = true;
                 document.getElementById('db-status').innerText = '系統上線 Online';
-                document.getElementById('db-status').className = 'text-xl font-black text-green-400 flex items-center gap-2';
+                document.getElementById('db-status').className = 'text-sm md:text-xl font-black text-green-400 flex items-center gap-2';
                 
                 if(animate) {
     animate("#ui-header", { y: [-50, 0], opacity: [0, 1] }, { duration: 0.8, easing: "ease-out" });
     animate("#main-dashboard", { y: [50, 0], opacity: [0, 1] }, { delay: 0.3, type: "spring", stiffness: 200, damping: 20 });
 } else {
-    // 防呆機制：動畫引擎沒上線時，強制顯示 UI
     const header = document.getElementById('ui-header');
     const dash = document.getElementById('main-dashboard');
     if (header) header.classList.remove('opacity-0');
@@ -1102,9 +1058,7 @@
         const file = event.target.files[0]; if (!file) return;
         alert('匯入功能尚未實作');
     }
-    // ==========================================
-        // 🛸 私人歷史機隊雷達引擎 (純本地計算，永遠存在)
-        // ==========================================
+
         let fleetAnimationId = null;
         let isFleetRadarOn = false;
         let fleetPlanes = [];
@@ -1220,9 +1174,6 @@
             }
         }
             
-        // ==========================================
-    // 📂 本地 CSV 歷史軌跡解析與上傳引擎 (終極防彈版)
-    // ==========================================
     window.processCSVTrack = function(event) {
         const fileInput = event.target;
         const flightId = document.getElementById('csv-flight-id').value.trim();
@@ -1309,5 +1260,5 @@
         reader.readAsText(file);
     };
     </script>
-    </body>
-    </html>
+</body>
+</html>
