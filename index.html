@@ -678,7 +678,6 @@
             const sTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
             sTxt('pp-total-aircraft', renderList(stats.freq.aircrafts, 'list-aircraft', 'bg-emerald-600'));
             sTxt('pp-total-routes', renderList(stats.freq.routes, 'list-routes', 'bg-[#5e35b1]'));
-            
             sTxt('pp-total-airports', renderList(stats.freq.airports, 'list-airports', 'bg-[#7e57c2]'));
             sTxt('pp-total-airlines', renderList(stats.freq.airlines, 'list-airlines', 'bg-sky-600', true));
 
