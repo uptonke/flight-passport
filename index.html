@@ -314,9 +314,19 @@
         let isGlobe = true;
         let isNightMode = false;
         
-        // 🎥 新增：電影跟隨鏡頭狀態
+        // 🎥 新增：電影跟隨鏡頭狀態與「避震器」
         let cinematicMode = false;
         let followedPlaneObj = null;
+        let cinematicCamera = { lng: 0, lat: 0, bearing: 0, pitch: 0, zoom: 0 }; // 虛擬攝影機
+
+        // 當使用者手動拖曳地圖時，自動解除跟隨模式
+        map.on('dragstart', () => {
+            if (cinematicMode) {
+                cinematicMode = false;
+                followedPlaneObj = null;
+                document.getElementById('db-status').innerHTML = '系統上線 Online <span class="text-xs text-gray-500 ml-2">已手動接管鏡頭</span>';
+            }
+        });
 
         // Auth & Session
         async function checkAuth() {
@@ -1070,18 +1080,20 @@
                 const d = airportDB[dest];
                 if (!o || !d || !o.coords || !d.coords) return;
 
-                // 啟動電影跟隨模式
-                cinematicMode = true;
                 const pIndex = parseInt(routeId.split('-')[1]);
                 followedPlaneObj = animationState.planes[pIndex];
 
                 if (map.getStyle()) map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-') && l.id.endsWith('-line')) map.setPaintProperty(l.id, 'line-width', 3); });
                 if (map.getLayer(`${routeId}-line`)) map.setPaintProperty(`${routeId}-line`, 'line-width', 8); 
                 
-                // 運鏡切換：拉低仰角、拉近焦距 (不改變 center，留給動畫迴圈處理)
-                map.easeTo({ pitch: 65, zoom: 5.5, duration: 1500 });
+                // 🎥 啟動電影模式，並將虛擬攝影機初始化為「地圖當下的狀態」
+                cinematicMode = true;
+                cinematicCamera.lng = map.getCenter().lng;
+                cinematicCamera.lat = map.getCenter().lat;
+                cinematicCamera.bearing = map.getBearing();
+                cinematicCamera.pitch = map.getPitch();
+                cinematicCamera.zoom = map.getZoom();
                 
-                // 炫酷的 UI 狀態回饋
                 document.getElementById('db-status').innerHTML = '🎥 電影運鏡 Cinematic <span class="text-xs text-sky-400 ml-2 animate-pulse">Tracking</span>';
             } catch (e) {
                 console.warn('無法聚焦此航線', e);
@@ -1291,9 +1303,15 @@
                             </div>
                         `).addTo(map);
                         
+                    // 🎥 啟動電影模式，並將虛擬攝影機初始化
                     cinematicMode = true;
                     followedPlaneObj = planeObj;
-                    map.easeTo({ pitch: 65, zoom: 6.5, duration: 1500 });
+                    cinematicCamera.lng = map.getCenter().lng;
+                    cinematicCamera.lat = map.getCenter().lat;
+                    cinematicCamera.bearing = map.getBearing();
+                    cinematicCamera.pitch = map.getPitch();
+                    cinematicCamera.zoom = map.getZoom();
+                    
                     document.getElementById('db-status').innerHTML = '🎥 電影運鏡 Cinematic <span class="text-xs text-green-400 ml-2 animate-pulse">Fleet Tracking</span>';
                 });
                 
@@ -1322,9 +1340,38 @@
 
                     p.marker.setLngLat(currentPt);
                     p.el.style.transform = `rotate(${bearing - 45}deg)`;
-                    if (cinematicMode && followedPlaneObj === p) {
-                        map.jumpTo({ center: currentPt, bearing: bearing });
-                    }
+                    // 🎥 終極避震運鏡：虛擬攝影機物理學
+                if (cinematicMode && followedPlaneObj === p) {
+                    
+                    // 設定目標預期視角 (請確認這裡的變數名稱與你的迴圈相符)
+                    const targetLng = smoothLng;     // 機隊模式請換成 currentPt[0]
+                    const targetLat = smoothLat;     // 機隊模式請換成 currentPt[1]
+                    const targetBearing = activeSeg.bearing; // 機隊模式請換成 bearing
+                    const targetPitch = 65;
+                    const targetZoom = 6.5;
+
+                    // 1. 位置平滑跟隨 (係數 0.1 吸收小顛簸)
+                    cinematicCamera.lng += (targetLng - cinematicCamera.lng) * 0.1;
+                    cinematicCamera.lat += (targetLat - cinematicCamera.lat) * 0.1;
+
+                    // 2. 航向極致平滑 (解決地震的最主要關鍵，係數 0.02 讓轉向極度穩重)
+                    let bDiff = targetBearing - cinematicCamera.bearing;
+                    while (bDiff > 180) bDiff -= 360; // 處理 -180度 到 +180度的切換問題
+                    while (bDiff < -180) bDiff += 360;
+                    cinematicCamera.bearing += bDiff * 0.02; 
+
+                    // 3. 仰角與縮放平滑過渡 (取代會打架的 map.easeTo)
+                    cinematicCamera.pitch += (targetPitch - cinematicCamera.pitch) * 0.05;
+                    cinematicCamera.zoom += (targetZoom - cinematicCamera.zoom) * 0.05;
+
+                    // 統一由這裡向 Mapbox 寫入視角，絕不衝突
+                    map.jumpTo({
+                        center: [cinematicCamera.lng, cinematicCamera.lat],
+                        bearing: cinematicCamera.bearing,
+                        pitch: cinematicCamera.pitch,
+                        zoom: cinematicCamera.zoom
+                    });
+                }
                 });
                 fleetAnimationId = requestAnimationFrame(renderFleet);
             }
