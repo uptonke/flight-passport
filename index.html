@@ -13,7 +13,34 @@
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        .glass-panel { background: rgba(20, 20, 22, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-panel { 
+            background: linear-gradient(145deg, rgba(30, 30, 35, 0.85) 0%, rgba(10, 10, 12, 0.9) 100%);
+            backdrop-filter: blur(24px) saturate(150%); 
+            -webkit-backdrop-filter: blur(24px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            border-top: 1px solid rgba(255, 255, 255, 0.2); /* 頂部受光面高光 */
+            border-left: 1px solid rgba(255, 255, 255, 0.1); /* 左側受光面高光 */
+            box-shadow: 
+                0 30px 60px -12px rgba(0, 0, 0, 0.8), /* 底部深層環境陰影 */
+                inset 0 1px 0 rgba(255, 255, 255, 0.15), /* 玻璃內部反射 */
+                inset 0 -1px 20px rgba(0, 0, 0, 0.5); /* 底部內陰影增加厚度 */
+        }        
+        .flight-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+        }
+        .flight-card:hover {
+            background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 
+                0 10px 20px -5px rgba(0, 0, 0, 0.6),
+                0 0 15px rgba(56, 189, 248, 0.15), /* 輕微的科技藍色溢光 */
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        .text-glow-sky { text-shadow: 0 0 20px rgba(56, 189, 248, 0.6); }
+        .text-glow-yellow { text-shadow: 0 0 20px rgba(250, 204, 21, 0.6); }
+        .text-glow-white { text-shadow: 0 0 25px rgba(255, 255, 255, 0.4); }    
         .flighty-panel { background: #0f0f13; max-height: 85vh; overflow-y: auto; }
         .mapboxgl-ctrl-logo, .mapboxgl-ctrl-bottom-right { display: none !important; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -44,7 +71,7 @@
                     <input type="password" id="login-password" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-sky-500 transition-colors">
                 </div>
                 <div id="login-error" class="text-xs text-red-400 hidden text-center bg-red-400/10 py-2 rounded"></div>
-                <button type="submit" id="login-btn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-black py-3 rounded-xl mt-6 transition-colors tracking-wider">
+                <button type="submit" id="login-btn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-black py-3 rounded-xl mt-6 transition-all duration-300 tracking-wider shadow-[0_0_20px_rgba(56,189,248,0.4)] hover:shadow-[0_0_30px_rgba(56,189,248,0.7)] hover:-translate-y-0.5">
                     LOGIN 登入
                 </button>
             </form>
@@ -255,7 +282,7 @@
                     <input type="checkbox" id="inp-exit-row" class="w-4 h-4 rounded text-sky-500 cursor-pointer">
                     <label for="inp-exit-row" class="ml-2 text-sm text-gray-300 cursor-pointer">逃生門 Exit Row</label>
                 </div>
-                <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4">儲存 Save</button>
+                <button type="submit" id="submitBtn" class="w-full bg-sky-500 hover:bg-sky-400 text-black font-bold py-3 rounded-xl mt-4 transition-all duration-300 shadow-[0_0_15px_rgba(56,189,248,0.3)] hover:shadow-[0_0_25px_rgba(56,189,248,0.6)]">儲存 Save</button>
             </form>
             <div class="mt-8 pt-6 border-t border-sky-500/30">
                 <div class="text-xs text-sky-400 font-bold mb-3 uppercase tracking-wider">🛠️ 軌跡工程模式 Track Engineering</div>
@@ -810,7 +837,12 @@
         const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
 
         map.on('style.load', () => {
-            map.setFog({ "color": "rgb(24, 24, 26)", "high-color": "rgb(36, 36, 39)", "space-color": "rgb(0, 0, 0)", "star-intensity": 0.8 });
+           map.setLight({
+                anchor: 'viewport',
+                color: '#ffffff',
+                intensity: 0.35,
+                position: [1.15, 210, 30] // 模擬特定角度的太陽光源
+            });
 
             if (!map.getSource('nasa-black-marble')) {
                 map.addSource('nasa-black-marble', {
