@@ -318,16 +318,6 @@
         let cinematicMode = false;
         let followedPlaneObj = null;
 
-        // 當使用者手動拖曳地圖時，自動解除跟隨模式
-        map.on('dragstart', () => {
-            if (cinematicMode) {
-                cinematicMode = false;
-                followedPlaneObj = null;
-                document.getElementById('db-status').innerHTML = '系統上線 Online <span class="text-xs text-gray-500 ml-2">已手動接管鏡頭</span>';
-            }
-        });
-        
-
         // Auth & Session
         async function checkAuth() {
             const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -849,7 +839,13 @@
         };
 
         const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
-
+        map.on('dragstart', () => {
+            if (cinematicMode) {
+                cinematicMode = false;
+                followedPlaneObj = null;
+                document.getElementById('db-status').innerHTML = '系統上線 Online <span class="text-xs text-gray-500 ml-2">已手動接管鏡頭</span>';
+            }
+        });
         map.on('style.load', () => {
            map.setLight({
                 anchor: 'viewport',
