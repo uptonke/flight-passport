@@ -984,7 +984,7 @@
             return { cache, totalDist: accumulatedDist };
         }
 
-        // 🚀 完整替換：主畫面動畫引擎
+        // 🚀 完整替換：主畫面動畫引擎 (搭載效能節流與雙重避震)
         function globalAnimationLoop(timestamp) {
             if (!animationState.isRunning || animationState.planes.length === 0) return;
 
@@ -995,12 +995,13 @@
                 p.startTime = timestamp;
                 p.marker.getElement().style.opacity = 1;
                 
-                // 檢查是否還沒建快取，沒有就建一次
                 if (!p.segmentCache) {
                     const trajectory = buildTrajectoryCache(p.coords);
                     p.segmentCache = trajectory.cache;
                     p.totalDist = trajectory.totalDist;
                     p.currentSegmentIndex = 0;
+                    p.currentBearing = trajectory.cache[0].bearing; // 初始化飛機陀螺儀
+                    p.lastLineUpdate = 0; // 用來控制畫線頻率的計時器
                 }
             }
 
@@ -1017,46 +1018,72 @@
                 }
                 p.currentSegmentIndex = segIdx;
 
-                // 2. 取得當前航段資料
                 const activeSeg = p.segmentCache[segIdx];
                 
-                // 3. 計算在這個單一航段內的進度 (0.0 ~ 1.0)
                 let segmentProgress = 0;
                 if (activeSeg.length > 0) {
                     segmentProgress = (currentDist - activeSeg.startDist) / activeSeg.length;
                 }
 
-                // 4. 輕量級 LERP：計算飛機當下的平滑座標
+                // 2. 輕量級 LERP：計算飛機當下的平滑座標 (60 FPS)
                 const smoothLng = activeSeg.p1[0] + (activeSeg.p2[0] - activeSeg.p1[0]) * segmentProgress;
                 const smoothLat = activeSeg.p1[1] + (activeSeg.p2[1] - activeSeg.p1[1]) * segmentProgress;
                 
-                // 5. 更新飛機本體
+                // 3. ✈️ 飛機本體陀螺儀避震 (過濾 GPS 雜訊)
+                let targetPlaneBearing = activeSeg.bearing;
+                let planeBDiff = targetPlaneBearing - p.currentBearing;
+                while (planeBDiff > 180) planeBDiff -= 360;
+                while (planeBDiff < -180) planeBDiff += 360;
+                // 讓飛機轉向平滑過渡 (0.1 的靈敏度)
+                p.currentBearing += planeBDiff * 0.1; 
+                
                 p.marker.setLngLat([smoothLng, smoothLat]); 
-                p.icon.style.transform = `rotate(${activeSeg.bearing - 45}deg)`; 
-                // 🎥 新增：電影跟隨鏡頭 (鎖定中心點與航向)
+                p.icon.style.transform = `rotate(${p.currentBearing - 45}deg)`; 
+
+                // 🎥 4. 終極避震運鏡：虛擬攝影機物理學 (60 FPS)
                 if (cinematicMode && followedPlaneObj === p) {
-                    map.jumpTo({ 
-                        center: [smoothLng, smoothLat], 
-                        bearing: activeSeg.bearing 
+                    const targetLng = smoothLng;
+                    const targetLat = smoothLat;
+                    // 攝影機追蹤飛機「平滑化後」的航向
+                    const targetCamBearing = p.currentBearing; 
+                    const targetPitch = 65;
+                    const targetZoom = 6.5;
+
+                    cinematicCamera.lng += (targetLng - cinematicCamera.lng) * 0.1;
+                    cinematicCamera.lat += (targetLat - cinematicCamera.lat) * 0.1;
+
+                    let camBDiff = targetCamBearing - cinematicCamera.bearing;
+                    while (camBDiff > 180) camBDiff -= 360;
+                    while (camBDiff < -180) camBDiff += 360;
+                    cinematicCamera.bearing += camBDiff * 0.03; // 更重的攝影機阻尼
+
+                    cinematicCamera.pitch += (targetPitch - cinematicCamera.pitch) * 0.05;
+                    cinematicCamera.zoom += (targetZoom - cinematicCamera.zoom) * 0.05;
+
+                    map.jumpTo({
+                        center: [cinematicCamera.lng, cinematicCamera.lat],
+                        bearing: cinematicCamera.bearing,
+                        pitch: cinematicCamera.pitch,
+                        zoom: cinematicCamera.zoom
                     });
                 }
 
-                // 🟢 6. 找回失蹤的線條！
-                if (map.getSource(p.id)) {
-                    // 擷取前面已經飛過的「真實陣列點」(保留 CSV 的高解析度彎曲)
-                    const drawnCoords = p.coords.slice(0, segIdx + 1);
-                    
-                    // 把剛剛算出來的平滑點推入最後，讓線條完美無縫接上飛機！
-                    drawnCoords.push([smoothLng, smoothLat]);
-                    
-                    map.getSource(p.id).setData({ 
-                        'type': 'FeatureCollection', 
-                        'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': drawnCoords } } ] 
-                    });
+                // 🟢 5. 軌跡線繪製「效能節流」 (Throttle) - 解決地震的絕對關鍵！
+                // 限制每 100 毫秒 (約 10 FPS) 才向 GPU 更新一次線條
+                if (timestamp - p.lastLineUpdate > 100) {
+                    p.lastLineUpdate = timestamp;
+                    if (map.getSource(p.id)) {
+                        const drawnCoords = p.coords.slice(0, segIdx + 1);
+                        drawnCoords.push([smoothLng, smoothLat]);
+                        
+                        map.getSource(p.id).setData({ 
+                            'type': 'FeatureCollection', 
+                            'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': drawnCoords } } ] 
+                        });
+                    }
                 }
                 
             } else {
-                // 抵達終點，確保最後畫出完整線條
                 if (map.getSource(p.id)) {
                     map.getSource(p.id).setData({ 
                         'type': 'FeatureCollection', 
@@ -1071,7 +1098,8 @@
                     animationState.currentPlaneIndex = 0;
                     animationState.planes.forEach(plane => {
                         plane.startTime = null;
-                        plane.segmentCache = null; // 重跑一輪時釋放記憶體
+                        plane.segmentCache = null;
+                        plane.currentBearing = null;
                         if (map.getSource(plane.id)) {
                             map.getSource(plane.id).setData({ 'type': 'FeatureCollection', 'features': [] });
                         }
