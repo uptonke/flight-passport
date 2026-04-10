@@ -317,16 +317,16 @@
         // 🎥 新增：電影跟隨鏡頭狀態與「避震器」
         let cinematicMode = false;
         let followedPlaneObj = null;
-        let cinematicCamera = { lng: 0, lat: 0, bearing: 0, pitch: 0, zoom: 0 }; // 虛擬攝影機
-
-        // 當使用者手動拖曳地圖時，自動解除跟隨模式
-        map.on('dragstart', () => {
-            if (cinematicMode) {
-                cinematicMode = false;
-                followedPlaneObj = null;
-                document.getElementById('db-status').innerHTML = '系統上線 Online <span class="text-xs text-gray-500 ml-2">已手動接管鏡頭</span>';
-            }
+        let cinematicCamera = { lng: 0, lat: 0, bearing: 0, pitch: 0, zoom: 0 };
+       
+        if (cinematicMode) {
+            // 🎥 新增：電影跟隨鏡頭狀態與「避震器」
+            let cinematicMode = false;
+            let followedPlaneObj = null;
+            let cinematicCamera = { lng: 0, lat: 0, bearing: 0, pitch: 0, zoom: 0 }; // 虛擬攝影機
+            document.getElementById('db-status').innerHTML = '系統上線 Online <span class="text-xs text-gray-500 ml-2">已手動接管鏡頭</span>';
         });
+        
 
         // Auth & Session
         async function checkAuth() {
@@ -848,7 +848,14 @@
             if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
         };
 
-        const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [111.0, 25.0], zoom: 3.5, pitch: 45, projection: 'globe' });
+        const map = new mapboxgl.Map({ 
+            container: 'map', 
+            style: 'mapbox://styles/mapbox/satellite-streets-v12', 
+            center: [111.0, 25.0], 
+            zoom: 3.5, 
+            pitch: 45, 
+            projection: 'globe' 
+        });
         map.on('dragstart', () => {
             if (cinematicMode) {
                 cinematicMode = false;
