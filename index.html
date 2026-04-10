@@ -313,6 +313,20 @@
         let isAppInitialized = false;
         let isGlobe = true;
         let isNightMode = false;
+        
+        // 🎥 新增：電影跟隨鏡頭狀態
+        let cinematicMode = false;
+        let followedPlaneObj = null;
+
+        // 當使用者手動拖曳地圖時，自動解除跟隨模式
+        map.on('dragstart', () => {
+            if (cinematicMode) {
+                cinematicMode = false;
+                followedPlaneObj = null;
+                document.getElementById('db-status').innerHTML = '系統上線 Online <span class="text-xs text-gray-500 ml-2">已手動接管鏡頭</span>';
+            }
+        });
+        
 
         // Auth & Session
         async function checkAuth() {
@@ -1006,6 +1020,13 @@
                 // 5. 更新飛機本體
                 p.marker.setLngLat([smoothLng, smoothLat]); 
                 p.icon.style.transform = `rotate(${activeSeg.bearing - 45}deg)`; 
+                // 🎥 新增：電影跟隨鏡頭 (鎖定中心點與航向)
+                if (cinematicMode && followedPlaneObj === p) {
+                    map.jumpTo({ 
+                        center: [smoothLng, smoothLat], 
+                        bearing: activeSeg.bearing 
+                    });
+                }
 
                 // 🟢 6. 找回失蹤的線條！
                 if (map.getSource(p.id)) {
@@ -1048,16 +1069,28 @@
             requestAnimationFrame(globalAnimationLoop);
         }
         window.focusFlightRoute = function(routeId, origin, dest) {
-        try {
-            const o = airportDB[origin];
-            const d = airportDB[dest];
-            if (!o || !d || !o.coords || !d.coords) return;
-            if (map.getStyle()) map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-') && l.id.endsWith('-line')) map.setPaintProperty(l.id, 'line-width', 3); });
-            if (map.getLayer(`${routeId}-line`)) map.setPaintProperty(`${routeId}-line`, 'line-width', 8); 
-            map.flyTo({ center: turf.midpoint(turf.point(o.coords), turf.point(d.coords)).geometry.coordinates, zoom: 4, duration: 1500 });
-        } catch (e) {
-            console.warn('無法聚焦此航線', e);
-        }
+            try {
+                const o = airportDB[origin];
+                const d = airportDB[dest];
+                if (!o || !d || !o.coords || !d.coords) return;
+
+                // 啟動電影跟隨模式
+                cinematicMode = true;
+                const pIndex = parseInt(routeId.split('-')[1]);
+                followedPlaneObj = animationState.planes[pIndex];
+
+                if (map.getStyle()) map.getStyle().layers.forEach(l => { if (l.id.startsWith('r-') && l.id.endsWith('-line')) map.setPaintProperty(l.id, 'line-width', 3); });
+                if (map.getLayer(`${routeId}-line`)) map.setPaintProperty(`${routeId}-line`, 'line-width', 8); 
+                
+                // 運鏡切換：拉低仰角、拉近焦距 (不改變 center，留給動畫迴圈處理)
+                map.easeTo({ pitch: 65, zoom: 5.5, duration: 1500 });
+                
+                // 炫酷的 UI 狀態回饋
+                document.getElementById('db-status').innerHTML = '🎥 電影運鏡 Cinematic <span class="text-xs text-sky-400 ml-2 animate-pulse">Tracking</span>';
+            } catch (e) {
+                console.warn('無法聚焦此航線', e);
+            }
+        };
     }
 
         async function initApp() {
@@ -1210,6 +1243,14 @@
                 el.style.fontSize = '14px';
                 el.style.transition = 'transform 0s';
                 
+                const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
+                const duration = ((lineDistance / 850) + 0.5) * 2000;
+                const planeLineString = turf.lineString(coords);
+                
+                // 🚀 必須先建立物件，才能將自身傳給 followedPlaneObj
+                const planeObj = { marker: marker, el: el, lineString: planeLineString, totalDist: lineDistance, duration: duration, progress: Math.random() };
+                fleetPlanes.push(planeObj);
+
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
                     new mapboxgl.Popup({ closeButton: false })
@@ -1224,7 +1265,12 @@
                                 </div>
                             </div>
                         `).addTo(map);
+                        cinematicMode = true;
+                    followedPlaneObj = planeObj;
+                    map.easeTo({ pitch: 65, zoom: 6.5, duration: 1500 });
+                    document.getElementById('db-status').innerHTML = '🎥 電影運鏡 Cinematic <span class="text-xs text-green-400 ml-2 animate-pulse">Fleet Tracking</span>';
                 });
+                
 
                 const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
                 const duration = ((lineDistance / 850) + 0.5) * 2000;
@@ -1256,6 +1302,9 @@
 
                     p.marker.setLngLat(currentPt);
                     p.el.style.transform = `rotate(${bearing - 45}deg)`;
+                    if (cinematicMode && followedPlaneObj === p) {
+                        map.jumpTo({ center: currentPt, bearing: bearing });
+                    }
                 });
                 fleetAnimationId = requestAnimationFrame(renderFleet);
             }
