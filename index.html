@@ -926,6 +926,38 @@
 
         const TIME_SCALE = 2000; 
 
+        // 🚀 新增：預處理函式，將原始座標陣列轉換成「航段快取表」
+        function buildTrajectoryCache(coords) {
+            let cache = [];
+            let accumulatedDist = 0;
+            
+            for (let i = 0; i < coords.length - 1; i++) {
+                let p1 = coords[i];
+                let p2 = coords[i + 1];
+                
+                // 繁重的 Turf 運算，只在初始化時做一次！
+                let dist = turf.distance(p1, p2, { units: 'kilometers' });
+                let bearing = turf.bearing(p1, p2);
+                
+                cache.push({
+                    startDist: accumulatedDist,
+                    endDist: accumulatedDist + dist,
+                    length: dist,
+                    p1: p1,
+                    p2: p2,
+                    bearing: bearing
+                });
+                accumulatedDist += dist;
+            }
+            
+            // 防呆：如果軌跡異常，給個預設值避免崩潰
+            if (cache.length === 0) {
+                cache.push({ startDist: 0, endDist: 0.1, length: 0.1, p1: coords[0]||[0,0], p2: coords[0]||[0,0], bearing: 0 });
+            }
+            return { cache, totalDist: accumulatedDist };
+        }
+
+        // 🚀 完整替換：主畫面動畫引擎
         function globalAnimationLoop(timestamp) {
             if (!animationState.isRunning || animationState.planes.length === 0) return;
 
@@ -936,35 +968,13 @@
                 p.startTime = timestamp;
                 p.marker.getElement().style.opacity = 1;
                 
-                // 預先產生 Turf 線段物件與計算總距離 (只算一次)
-                if (!p.lineString) {
-                    // 取出 2D 座標給 Turf 算物理距離
-                    const coords2D = p.coords.map(c => [c[0], c[1]]);
+                // 檢查是否還沒建快取，沒有就建一次
+                if (!p.segmentCache) {
                     const trajectory = buildTrajectoryCache(p.coords);
                     p.segmentCache = trajectory.cache;
                     p.totalDist = trajectory.totalDist;
                     p.currentSegmentIndex = 0;
                 }
-                function buildTrajectoryCache(coords) {
-                    let cache = [];
-                    let accumulatedDist = 0;
-                    for (let i = 0; i < coords.length - 1; i++) {
-                        let p1 = coords[i];
-                        let p2 = coords[i + 1];
-                        let dist = turf.distance(p1, p2, { units: 'kilometers' });
-                        let bearing = turf.bearing(p1, p2);
-                        cache.push({
-                            startDist: accumulatedDist,
-                            endDist: accumulatedDist + dist,
-                            length: dist,
-                            p1: p1,
-                            p2: p2,
-                            bearing: bearing
-                        });
-                        accumulatedDist += dist;
-                    }
-                    return { cache, totalDist: accumulatedDist };
-                }                            
             }
 
             const totalDurationMs = p.flightHours * TIME_SCALE;
@@ -973,12 +983,12 @@
             if (progress < 1) {
                 const currentDist = progress * p.totalDist;
                 
-                // 1. 快速尋找目前所在的航段 (O(1) 效能，因為索引只會往前進)
+                // 1. 快速尋找目前所在的航段 (O(1) 效能尋址)
                 let segIdx = p.currentSegmentIndex || 0;
                 while (segIdx < p.segmentCache.length - 1 && currentDist > p.segmentCache[segIdx].endDist) {
                     segIdx++;
                 }
-                p.currentSegmentIndex = segIdx; // 存起來，下一幀就不用從頭找
+                p.currentSegmentIndex = segIdx;
 
                 // 2. 取得當前航段資料
                 const activeSeg = p.segmentCache[segIdx];
@@ -989,14 +999,30 @@
                     segmentProgress = (currentDist - activeSeg.startDist) / activeSeg.length;
                 }
 
-                // 4. 🚀 輕量級 LERP (純粹的數學加減乘除，極度省效能)
+                // 4. 輕量級 LERP：計算飛機當下的平滑座標
                 const smoothLng = activeSeg.p1[0] + (activeSeg.p2[0] - activeSeg.p1[0]) * segmentProgress;
                 const smoothLat = activeSeg.p1[1] + (activeSeg.p2[1] - activeSeg.p1[1]) * segmentProgress;
                 
-                // 5. 更新飛機 (方位角直接拿快取好的，不用重算)
+                // 5. 更新飛機本體
                 p.marker.setLngLat([smoothLng, smoothLat]); 
-                p.icon.style.transform = `rotate(${activeSeg.bearing - 45}deg)`;
+                p.icon.style.transform = `rotate(${activeSeg.bearing - 45}deg)`; 
+
+                // 🟢 6. 找回失蹤的線條！
+                if (map.getSource(p.id)) {
+                    // 擷取前面已經飛過的「真實陣列點」(保留 CSV 的高解析度彎曲)
+                    const drawnCoords = p.coords.slice(0, segIdx + 1);
+                    
+                    // 把剛剛算出來的平滑點推入最後，讓線條完美無縫接上飛機！
+                    drawnCoords.push([smoothLng, smoothLat]);
+                    
+                    map.getSource(p.id).setData({ 
+                        'type': 'FeatureCollection', 
+                        'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': drawnCoords } } ] 
+                    });
+                }
+                
             } else {
+                // 抵達終點，確保最後畫出完整線條
                 if (map.getSource(p.id)) {
                     map.getSource(p.id).setData({ 
                         'type': 'FeatureCollection', 
@@ -1011,7 +1037,7 @@
                     animationState.currentPlaneIndex = 0;
                     animationState.planes.forEach(plane => {
                         plane.startTime = null;
-                        plane.lineString = null; // 重置快取
+                        plane.segmentCache = null; // 重跑一輪時釋放記憶體
                         if (map.getSource(plane.id)) {
                             map.getSource(plane.id).setData({ 'type': 'FeatureCollection', 'features': [] });
                         }
