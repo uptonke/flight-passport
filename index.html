@@ -1189,6 +1189,37 @@
                     content.classList.add('hidden', 'opacity-0', 'h-0', 'mt-0'); icon.style.transform = 'rotate(180deg)';
                 }
             } catch(e) { document.getElementById('db-status').innerHTML = '<span class="text-red-500">連線失敗 Failed</span>'; }
+            async function initApp() {
+            document.getElementById('db-status').innerText = '載入字典...';
+            await loadGlobalAirports();
+            try {
+                document.getElementById('db-status').innerText = '拉取航班...';
+                await fetchFlights();
+                isAppInitialized = true;
+                document.getElementById('db-status').innerText = '系統上線 Online';
+                document.getElementById('db-status').className = 'text-sm md:text-xl font-black text-green-400 flex items-center gap-2';
+                
+                // 這裡就是讓 UI 浮現的關鍵動畫
+                if(animate) {
+                    animate("#ui-header", { y: [-50, 0], opacity: [0, 1] }, { duration: 0.8, easing: "ease-out" });
+                    animate("#main-dashboard", { y: [50, 0], opacity: [0, 1] }, { delay: 0.3, type: "spring", stiffness: 200, damping: 20 });
+                } else {
+                    const header = document.getElementById('ui-header');
+                    const dash = document.getElementById('main-dashboard');
+                    if (header) header.classList.remove('opacity-0');
+                    if (dash) dash.classList.remove('opacity-0', 'translate-y-10');
+                }
+
+                if (window.innerWidth < 768) {
+                    const content = document.getElementById('dash-content');
+                    const icon = document.getElementById('dash-toggle-icon');
+                    content.classList.add('hidden', 'opacity-0', 'h-0', 'mt-0'); 
+                    icon.style.transform = 'rotate(180deg)';
+                }
+            } catch(e) { 
+                document.getElementById('db-status').innerHTML = '<span class="text-red-500">連線失敗 Failed</span>'; 
+            }
+        }
         }
     
         window.smartSplitFlight = function(e) {
