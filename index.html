@@ -935,8 +935,21 @@
                 map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
                 map.addLayer({ 'id': `${routeId}-line`, 'type': 'line', 'source': routeId, 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': f.routeColor, 'line-width': 3, 'line-opacity': 0.85 } });
                 
-                const elContainer = document.createElement('div'); const planeIcon = document.createElement('div');
-                planeIcon.innerHTML = '✈️'; planeIcon.style.fontSize = '18px'; planeIcon.style.transition = 'transform 0.1s linear'; elContainer.appendChild(planeIcon);
+                const elContainer = document.createElement('div'); 
+                const planeIcon = document.createElement('div');
+
+                // 啟用 3D 透視視角
+                planeIcon.style.transformStyle = 'preserve-3d';
+                planeIcon.style.perspective = '150px'; 
+
+                // 繪製高精度的飛機 SVG，並加入深層陰影與引擎科技藍光
+                planeIcon.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="28" height="28" style="filter: drop-shadow(0px 15px 10px rgba(0,0,0,0.6)) drop-shadow(0px 0px 6px rgba(56,189,248,0.8));">
+                        <path fill="#ffffff" d="M21,16v-2l-8-5V3.5C13,2.67,12.33,2,11.5,2S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z"/>
+                    </svg>
+                 `;
+                elContainer.appendChild(planeIcon); 
+                planeIcon.style.transition = 'transform 0.1s linear'; elContainer.appendChild(planeIcon);
                 const planeMarker = new mapboxgl.Marker({element: elContainer}).setLngLat(f.routeCoords[0]).addTo(map);
                 
                 planeMarker.getElement().style.opacity = 0;
@@ -1038,7 +1051,21 @@
                 p.currentBearing += planeBDiff * 0.1; 
                 
                 p.marker.setLngLat([smoothLng, smoothLat]); 
-                p.icon.style.transform = `rotate(${p.currentBearing - 45}deg)`; 
+                // 1. 計算預期側傾角 (目標轉向差 * 放大係數)
+                // 轉彎越急，planeBDiff 越大，飛機傾斜就越深
+                let targetRoll = planeBDiff * 12; 
+
+                // 2. 限制最大側傾角，避免飛機翻肚 (限制在正負 55 度內)
+                targetRoll = Math.max(-55, Math.min(55, targetRoll));
+
+                // 3. 側傾角 LERP 平滑過渡 (讓壓車和回正的動作像真實物理一樣柔和)
+                p.currentRoll = p.currentRoll || 0;
+                p.currentRoll += (targetRoll - p.currentRoll) * 0.08;
+
+                // 4. 套用雙軸 3D 旋轉 (Z軸管航向，Y軸管側傾)
+                // 注意：SVG 機頭已經是正的，所以不需要再 -45 度了！
+                p.icon.style.transform = `rotateZ(${p.currentBearing}deg) rotateY(${p.currentRoll}deg)`;
+                // 如果在機隊模式(renderFleet)中，變數可能是 p.el.style.transform 
 
                 // 🎥 4. 終極避震運鏡：虛擬攝影機物理學 (60 FPS)
                 if (cinematicMode && followedPlaneObj === p) {
@@ -1281,9 +1308,16 @@
                 routeFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
 
                 const el = document.createElement('div');
-                el.innerHTML = '✈️';
-                el.style.fontSize = '14px';
-                el.style.transition = 'transform 0s';
+                // 啟用 3D 透視視角
+                el.style.transformStyle = 'preserve-3d';
+                el.style.perspective = '150px'; 
+
+                // 繪製高精度 SVG 機體
+                el.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="28" height="28" style="filter: drop-shadow(0px 15px 10px rgba(0,0,0,0.6)) drop-shadow(0px 0px 6px rgba(56,189,248,0.8));">
+                        <path fill="#ffffff" d="M21,16v-2l-8-5V3.5C13,2.67,12.33,2,11.5,2S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z"/>
+                    </svg>
+                 `;
                 
                 // 1. 只宣告這一次
                 const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
