@@ -940,38 +940,62 @@
                 if (!p.lineString) {
                     // 取出 2D 座標給 Turf 算物理距離
                     const coords2D = p.coords.map(c => [c[0], c[1]]);
-                    p.lineString = turf.lineString(coords2D);
-                    p.totalDist = turf.length(p.lineString);
+                    const trajectory = buildTrajectoryCache(p.coords);
+                    p.segmentCache = trajectory.cache;
+                    p.totalDist = trajectory.totalDist;
+                    p.currentSegmentIndex = 0;
                 }
+                function buildTrajectoryCache(coords) {
+                    let cache = [];
+                    let accumulatedDist = 0;
+                    for (let i = 0; i < coords.length - 1; i++) {
+                        let p1 = coords[i];
+                        let p2 = coords[i + 1];
+                        let dist = turf.distance(p1, p2, { units: 'kilometers' });
+                        let bearing = turf.bearing(p1, p2);
+                        cache.push({
+                            startDist: accumulatedDist,
+                            endDist: accumulatedDist + dist,
+                            length: dist,
+                            p1: p1,
+                            p2: p2,
+                            bearing: bearing
+                        });
+                        accumulatedDist += dist;
+                    }
+                    return { cache, totalDist: accumulatedDist };
+                }                            
             }
 
             const totalDurationMs = p.flightHours * TIME_SCALE;
             let progress = (timestamp - p.startTime) / totalDurationMs;
 
             if (progress < 1) {
-                // 🚀 終極解法：使用「真實距離」來推進，取代「陣列索引」
                 const currentDist = progress * p.totalDist;
                 
-                // 用 turf.along 取得當下進度最精確的地理點 (絕對平滑)
-                const currentPt = turf.along(p.lineString, currentDist).geometry.coordinates;
-                
-                // 找前方 1 公里處當作基準來計算完美的飛機旋轉角度
-                const nextDist = Math.min(currentDist + 1, p.totalDist);
-                const nextPt = turf.along(p.lineString, nextDist).geometry.coordinates;
-                const bearing = turf.bearing(currentPt, nextPt);
-
-                // 飛機圖示推進
-                p.marker.setLngLat(currentPt); 
-                p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
-
-                // 🚀 修正線條抖動：用切片切到精確點，讓軌跡線完美貼著飛機屁股
-                if (currentDist > 0 && map.getSource(p.id)) {
-                    const slicedLine = turf.lineSliceAlong(p.lineString, 0, currentDist);
-                    map.getSource(p.id).setData({ 
-                        'type': 'FeatureCollection', 
-                        'features': [slicedLine] 
-                    });
+                // 1. 快速尋找目前所在的航段 (O(1) 效能，因為索引只會往前進)
+                let segIdx = p.currentSegmentIndex || 0;
+                while (segIdx < p.segmentCache.length - 1 && currentDist > p.segmentCache[segIdx].endDist) {
+                    segIdx++;
                 }
+                p.currentSegmentIndex = segIdx; // 存起來，下一幀就不用從頭找
+
+                // 2. 取得當前航段資料
+                const activeSeg = p.segmentCache[segIdx];
+                
+                // 3. 計算在這個單一航段內的進度 (0.0 ~ 1.0)
+                let segmentProgress = 0;
+                if (activeSeg.length > 0) {
+                    segmentProgress = (currentDist - activeSeg.startDist) / activeSeg.length;
+                }
+
+                // 4. 🚀 輕量級 LERP (純粹的數學加減乘除，極度省效能)
+                const smoothLng = activeSeg.p1[0] + (activeSeg.p2[0] - activeSeg.p1[0]) * segmentProgress;
+                const smoothLat = activeSeg.p1[1] + (activeSeg.p2[1] - activeSeg.p1[1]) * segmentProgress;
+                
+                // 5. 更新飛機 (方位角直接拿快取好的，不用重算)
+                p.marker.setLngLat([smoothLng, smoothLat]); 
+                p.icon.style.transform = `rotate(${activeSeg.bearing - 45}deg)`;
             } else {
                 if (map.getSource(p.id)) {
                     map.getSource(p.id).setData({ 
