@@ -935,40 +935,43 @@
             if (!p.startTime) {
                 p.startTime = timestamp;
                 p.marker.getElement().style.opacity = 1;
+                
+                // 預先產生 Turf 線段物件與計算總距離 (只算一次)
+                if (!p.lineString) {
+                    // 取出 2D 座標給 Turf 算物理距離
+                    const coords2D = p.coords.map(c => [c[0], c[1]]);
+                    p.lineString = turf.lineString(coords2D);
+                    p.totalDist = turf.length(p.lineString);
+                }
             }
 
             const totalDurationMs = p.flightHours * TIME_SCALE;
             let progress = (timestamp - p.startTime) / totalDurationMs;
 
             if (progress < 1) {
-                const maxIndex = p.coords.length - 1;
-                const step = progress * maxIndex;
-                const idx = Math.floor(step);
-                const remainder = step - idx; // 提取小數點進度 (LERP 核心)
-                const nextIdx = Math.min(idx + 1, maxIndex);
+                // 🚀 終極解法：使用「真實距離」來推進，取代「陣列索引」
+                const currentDist = progress * p.totalDist;
+                
+                // 用 turf.along 取得當下進度最精確的地理點 (絕對平滑)
+                const currentPt = turf.along(p.lineString, currentDist).geometry.coordinates;
+                
+                // 找前方 1 公里處當作基準來計算完美的飛機旋轉角度
+                const nextDist = Math.min(currentDist + 1, p.totalDist);
+                const nextPt = turf.along(p.lineString, nextDist).geometry.coordinates;
+                const bearing = turf.bearing(currentPt, nextPt);
 
-                // 1. 讓軌跡線條跟著目前的整數點長出來
-                if (idx > 0 && map.getSource(p.id)) {
+                // 飛機圖示推進
+                p.marker.setLngLat(currentPt); 
+                p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
+
+                // 🚀 修正線條抖動：用切片切到精確點，讓軌跡線完美貼著飛機屁股
+                if (currentDist > 0 && map.getSource(p.id)) {
+                    const slicedLine = turf.lineSliceAlong(p.lineString, 0, currentDist);
                     map.getSource(p.id).setData({ 
                         'type': 'FeatureCollection', 
-                        'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords.slice(0, idx + 1) } } ] 
+                        'features': [slicedLine] 
                     });
                 }
-
-                // 2. 飛機本體使用 LERP 進行兩點間的平滑過渡
-                if (idx < maxIndex) {
-                    const p1 = p.coords[idx];
-                    const p2 = p.coords[nextIdx];
-                    
-                    // 線性插值計算
-                    const smoothLng = p1[0] + (p2[0] - p1[0]) * remainder;
-                    const smoothLat = p1[1] + (p2[1] - p1[1]) * remainder;
-                    const bearing = turf.bearing(p1, p2);
-                    
-                    p.marker.setLngLat([smoothLng, smoothLat]); 
-                    p.icon.style.transform = `rotate(${bearing - 45}deg)`; 
-                }
-
             } else {
                 if (map.getSource(p.id)) {
                     map.getSource(p.id).setData({ 
@@ -984,6 +987,7 @@
                     animationState.currentPlaneIndex = 0;
                     animationState.planes.forEach(plane => {
                         plane.startTime = null;
+                        plane.lineString = null; // 重置快取
                         if (map.getSource(plane.id)) {
                             map.getSource(plane.id).setData({ 'type': 'FeatureCollection', 'features': [] });
                         }
@@ -1173,9 +1177,11 @@
                 });
 
                 const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
-
                 const duration = ((lineDistance / 850) + 0.5) * 2000;
-                fleetPlanes.push({ marker: marker, el: el, coords: coords, duration: duration, progress: Math.random() });
+                
+                // 🚀 將整條線段封裝起來，交給 Turf 做絕對幾何計算
+                const planeLineString = turf.lineString(coords);
+                fleetPlanes.push({ marker: marker, el: el, lineString: planeLineString, totalDist: lineDistance, duration: duration, progress: Math.random() });
             });
 
             map.getSource('fleet-routes').setData({ type: 'FeatureCollection', features: routeFeatures });
@@ -1189,29 +1195,17 @@
                     p.progress += delta / p.duration;
                     if (p.progress >= 1) p.progress = 0;
 
-                    const maxIndex = p.coords.length - 1;
-                    const step = p.progress * maxIndex;
-                    const idx = Math.floor(step);
-                    const remainder = step - idx; // 補上遺漏的這行：計算兩點之間的進度 (0~1)
-                    const nextIdx = Math.min(idx + 1, maxIndex);
+                    // 🚀 全面改用真實地理距離進行動畫
+                    const currentDist = p.progress * p.totalDist;
+                    const currentPt = turf.along(p.lineString, currentDist).geometry.coordinates;
                     
-                    if (idx < maxIndex) {
-                        // 必須先定義 p1, p2 才能做後續計算
-                        const p1 = p.coords[idx];
-                        const p2 = p.coords[nextIdx];
-                        
-                        let smoothAlt = 0;
-                        if (p1[2] !== undefined && p2[2] !== undefined) {
-                            smoothAlt = p1[2] + (p2[2] - p1[2]) * remainder;
-                        }
+                    // 找前方 5 公里處看方向 (稍微拉長一點讓大機隊轉向更平穩)
+                    const nextDist = Math.min(currentDist + 5, p.totalDist); 
+                    const nextPt = turf.along(p.lineString, nextDist).geometry.coordinates;
+                    const bearing = turf.bearing(currentPt, nextPt);
 
-                        const smoothLng = p1[0] + (p2[0] - p1[0]) * remainder;
-                        const smoothLat = p1[1] + (p2[1] - p1[1]) * remainder;
-                        const bearing = turf.bearing(p1, p2);
-                        
-                        p.marker.setLngLat([smoothLng, smoothLat]);
-                        p.el.style.transform = `rotate(${bearing - 45}deg)`;
-                    }
+                    p.marker.setLngLat(currentPt);
+                    p.el.style.transform = `rotate(${bearing - 45}deg)`;
                 });
                 fleetAnimationId = requestAnimationFrame(renderFleet);
             }
