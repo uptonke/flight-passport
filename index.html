@@ -1204,6 +1204,8 @@
                 });
                 fleetAnimationId = requestAnimationFrame(renderFleet);
             }
+            fleetAnimationId = requestAnimationFrame(renderFleet);
+        }
 
         function stopFleetRadar() {
             if (fleetAnimationId) cancelAnimationFrame(fleetAnimationId);
