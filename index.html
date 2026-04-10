@@ -1182,14 +1182,21 @@
                     const step = p.progress * maxIndex;
                     const idx = Math.floor(step);
                     const nextIdx = Math.min(idx + 1, maxIndex);
-
+                    let smoothAlt = 0;
+                    if (p1[2] !== undefined && p2[2] !== undefined) {
+                        smoothAlt = p1[2] + (p2[2] - p1[2]) * remainder;
+                    }
+                    const bearing = turf.bearing(p1, p2);
                     if (idx < maxIndex) {
                         const p1 = p.coords[idx];
                         const p2 = p.coords[nextIdx];
+                        const smoothLng = p1[0] + (p2[0] - p1[0]) * remainder;
+                        const smoothLat = p1[1] + (p2[1] - p1[1]) * remainder;
                         const bearing = turf.bearing(p1, p2);
                         
-                        p.marker.setLngLat(p1);
+                        p.marker.setLngLat([smoothLng, smoothLat]);
                         p.el.style.transform = `rotate(${bearing - 45}deg)`;
+}
                     }
                 });
                 fleetAnimationId = requestAnimationFrame(renderFleet);
@@ -1265,6 +1272,15 @@
                 }
 
                 const geojson = { type: 'LineString', coordinates: coords };
+                try {
+                    const rawLine = turf.lineString(coords);
+                    const smoothedLine = turf.bezierSpline(rawLine, { resolution: 10000, sharpness: 0.85 });
+                    const smoothedCoords = smoothedLine.geometry.coordinates;
+                    const geojson = { type: 'LineString', coordinates: smoothedCoords };
+                    } catch (e) {
+                        console.warn("軌跡平滑化失敗，退回原始數據", e);
+                    }
+
 
                 const { error, data } = await supabaseClient
                     .from('flights')
