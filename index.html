@@ -319,15 +319,6 @@
         let followedPlaneObj = null;
         let cinematicCamera = { lng: 0, lat: 0, bearing: 0, pitch: 0, zoom: 0 };
        
-        if (cinematicMode) {
-            // 🎥 新增：電影跟隨鏡頭狀態與「避震器」
-            let cinematicMode = false;
-            let followedPlaneObj = null;
-            let cinematicCamera = { lng: 0, lat: 0, bearing: 0, pitch: 0, zoom: 0 }; // 虛擬攝影機
-            document.getElementById('db-status').innerHTML = '系統上線 Online <span class="text-xs text-gray-500 ml-2">已手動接管鏡頭</span>';
-        };
-        
-
         // Auth & Session
         async function checkAuth() {
             const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -956,6 +947,7 @@
                     rotationAlignment: 'map'  // 讓旋轉的 0 度永遠指向正北，而非螢幕正上方
                 }).setLngLat(f.routeCoords[0]).addTo(map);
                 planeMarker.getElement().style.opacity = 0;
+                const actualHours = f.flight_hours || ((f.distance / 850) + 0.5);
                 animationState.planes.push({ id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords, flightHours: actualHours, startTime: null });
             });
 
