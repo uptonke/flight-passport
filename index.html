@@ -1270,14 +1270,16 @@
                 el.style.fontSize = '14px';
                 el.style.transition = 'transform 0s';
                 
+                // 1. 只宣告這一次
                 const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
                 const duration = ((lineDistance / 850) + 0.5) * 2000;
                 const planeLineString = turf.lineString(coords);
                 
-                // 🚀 必須先建立物件，才能將自身傳給 followedPlaneObj
+                // 2. 建立物件並 push 進陣列
                 const planeObj = { marker: marker, el: el, lineString: planeLineString, totalDist: lineDistance, duration: duration, progress: Math.random() };
                 fleetPlanes.push(planeObj);
 
+                // 3. 綁定點擊事件與運鏡
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
                     new mapboxgl.Popup({ closeButton: false })
@@ -1292,19 +1294,14 @@
                                 </div>
                             </div>
                         `).addTo(map);
-                        cinematicMode = true;
+                        
+                    cinematicMode = true;
                     followedPlaneObj = planeObj;
                     map.easeTo({ pitch: 65, zoom: 6.5, duration: 1500 });
                     document.getElementById('db-status').innerHTML = '🎥 電影運鏡 Cinematic <span class="text-xs text-green-400 ml-2 animate-pulse">Fleet Tracking</span>';
                 });
                 
-
-                const marker = new mapboxgl.Marker({ element: el }).setLngLat(orig.coords).addTo(map);
-                const duration = ((lineDistance / 850) + 0.5) * 2000;
-                
-                // 🚀 將整條線段封裝起來，交給 Turf 做絕對幾何計算
-                const planeLineString = turf.lineString(coords);
-                fleetPlanes.push({ marker: marker, el: el, lineString: planeLineString, totalDist: lineDistance, duration: duration, progress: Math.random() });
+                // ❌ 注意：這裡下方原本重複的 marker 宣告和 fleetPlanes.push 已經被清除了！
             });
 
             map.getSource('fleet-routes').setData({ type: 'FeatureCollection', features: routeFeatures });
