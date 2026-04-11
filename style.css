@@ -1,0 +1,38 @@
+body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+.glass-panel { 
+    background: linear-gradient(145deg, rgba(30, 30, 35, 0.85) 0%, rgba(10, 10, 12, 0.9) 100%);
+    backdrop-filter: blur(24px) saturate(150%); 
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 
+        0 30px 60px -12px rgba(0, 0, 0, 0.8),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 20px rgba(0, 0, 0, 0.5);
+}        
+.flight-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+.flight-card:hover {
+    background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 10px 20px -5px rgba(0, 0, 0, 0.6),
+        0 0 15px rgba(56, 189, 248, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+.text-glow-sky { text-shadow: 0 0 20px rgba(56, 189, 248, 0.6); }
+.text-glow-yellow { text-shadow: 0 0 20px rgba(250, 204, 21, 0.6); }
+.text-glow-white { text-shadow: 0 0 25px rgba(255, 255, 255, 0.4); }    
+.flighty-panel { background: #0f0f13; max-height: 85vh; overflow-y: auto; }
+.mapboxgl-ctrl-logo, .mapboxgl-ctrl-bottom-right { display: none !important; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.mapboxgl-popup-content { background: rgba(30, 30, 34, 0.95); backdrop-filter: blur(10px); color: white; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); padding: 12px; max-height: 250px; overflow-y: auto; }
+.mapboxgl-popup-tip { border-top-color: rgba(30, 30, 34, 0.95) !important; }
