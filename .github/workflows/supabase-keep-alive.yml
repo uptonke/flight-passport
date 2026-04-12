@@ -1,0 +1,28 @@
+name: Supabase Keep Alive 💓
+
+on:
+  schedule:
+    # 這裡使用 Cron 語法：每週一與週四的 UTC 時間 00:00 (台灣時間早上 8 點) 自動觸發
+    - cron: "0 0 * * 1,4"
+  workflow_dispatch: # 留下這個咒語，讓你可以隨時在 GitHub 後台手動按按鈕測試
+
+jobs:
+  ping-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📡 發送 API 請求給 Supabase
+        env:
+          # 這是你專案的 API 網址 (公開資訊無妨)
+          SUPABASE_URL: "https://yrccanqxzrcoknzabifz.supabase.co"
+          # 為了 Due Diligence，密鑰我們從 GitHub Secrets 安全讀取
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "開始 Ping 資料庫..."
+          # 透過 REST API 只抓取 1 筆 flight 的 ID，極度輕量，不浪費傳輸流量
+          curl --silent --show-error --fail \
+            --request GET "$SUPABASE_URL/rest/v1/flights?select=id&limit=1" \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            --header "Content-Type: application/json"
+            
+          echo -e "\n✅ 成功敲門！Supabase 續命完成，再戰 7 天。"
