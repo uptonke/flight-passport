@@ -411,62 +411,108 @@ function triggerReactRender() {
 }
 
 function renderFilters() {
-    const years = new Set(); flightsState.forEach(f => { if (f.flight_date) years.add(f.flight_date.substring(0, 4)); });
-    let html = `<button onclick="filterByYear('ALL')" class="${currentYearFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full whitespace-nowrap">ALL</button>`;
-    Array.from(years).sort().reverse().forEach(y => {
-        html += `<button onclick="filterByYear('${y}')" class="${currentYearFilter === y ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'} px-3 py-1 rounded-full whitespace-nowrap">${y}</button>`;
+    const years = new Set();
+    flightsState.forEach(f => {
+        if (f.flight_date) years.add(f.flight_date.substring(0, 4));
     });
+
+    let html = `
+        <button onclick="filterByYear('ALL')" class="year-chip ${currentYearFilter === 'ALL' ? 'year-chip--active' : ''}">
+            ALL
+        </button>
+    `;
+
+    Array.from(years).sort().reverse().forEach(y => {
+        html += `
+            <button onclick="filterByYear('${y}')" class="year-chip ${currentYearFilter === y ? 'year-chip--active' : ''}">
+                ${y}
+            </button>
+        `;
+    });
+
     document.getElementById('year-filters').innerHTML = html;
 }
 window.filterByYear = (y) => { currentYearFilter = y; triggerReactRender(); }
 
 function renderDashboard(stats) {
-    const setTxt = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
-    setTxt('stat-dist', Math.round(stats.totalKm).toLocaleString()); setTxt('stat-flights', stats.completedFlights); setTxt('stat-trips', stats.tripsCount); 
-    if(stats.completedFlights > 0) {
+    const setTxt = (id, txt) => {
+        const e = document.getElementById(id);
+        if (e) e.innerText = txt;
+    };
+
+    setTxt('stat-dist', Math.round(stats.totalKm).toLocaleString());
+    setTxt('stat-flights', stats.completedFlights);
+    setTxt('stat-trips', stats.tripsCount);
+
+    setTxt('sb-long-route', '--');
+    setTxt('pp-short-route', '--');
+    setTxt('pp-short-dist', '--');
+    setTxt('pp-long-route', '--');
+    setTxt('pp-long-dist', '--');
+
+    if (stats.completedFlights > 0) {
         setTxt('sb-long-route', `${stats.longest.route} (${Math.round(stats.longest.dist)}km)`);
-        if (document.getElementById('sb-short-route')) setTxt('sb-short-route', `${stats.shortest.route} (${Math.round(stats.shortest.dist)}km)`);
         if (document.getElementById('pp-short-route')) setTxt('pp-short-route', stats.shortest.route);
         if (document.getElementById('pp-short-dist')) setTxt('pp-short-dist', `${Math.round(stats.shortest.dist).toLocaleString()} km`);
-        if (document.getElementById('pp-long-route')) setTxt('pp-long-route', stats.longest.route); 
+        if (document.getElementById('pp-long-route')) setTxt('pp-long-route', stats.longest.route);
         if (document.getElementById('pp-long-dist')) setTxt('pp-long-dist', `${Math.round(stats.longest.dist).toLocaleString()} km`);
     }
+
     setTxt('pp-dist', Math.round(stats.totalKm).toLocaleString());
-    setTxt('pp-earth', (stats.totalKm / 40075).toFixed(1)); setTxt('pp-moon', (stats.totalKm / 384400).toFixed(2));
-    const eBar = document.getElementById('pp-earth-bar'); if(eBar) eBar.style.width = `${Math.min((stats.totalKm / 40075) * 100, 100)}%`;
-    const mBar = document.getElementById('pp-moon-bar'); if(mBar) mBar.style.width = `${Math.min((stats.totalKm / 384400) * 100, 100)}%`;
+    setTxt('pp-earth', (stats.totalKm / 40075).toFixed(1));
+    setTxt('pp-moon', (stats.totalKm / 384400).toFixed(2));
+
+    const eBar = document.getElementById('pp-earth-bar');
+    if (eBar) eBar.style.width = `${Math.min((stats.totalKm / 40075) * 100, 100)}%`;
+
+    const mBar = document.getElementById('pp-moon-bar');
+    if (mBar) mBar.style.width = `${Math.min((stats.totalKm / 384400) * 100, 100)}%`;
 
     const avg = stats.completedFlights ? (stats.totalHours / stats.completedFlights) : 0;
-    document.getElementById('pp-time-main').innerHTML = `${Math.floor(stats.totalHours)}<span class="text-2xl text-gray-500">h</span> ${Math.round((stats.totalHours - Math.floor(stats.totalHours)) * 60)}<span class="text-2xl text-gray-500">m</span>`;
-    setTxt('pp-days', (stats.totalHours / 24).toFixed(1)); setTxt('pp-avg-time', formatTimeString(avg)); setTxt('pp-in-air', formatTimeString(stats.totalHours));
-    setTxt('pp-total-flights-box', stats.completedFlights); setTxt('pp-dom', stats.domCount); setTxt('pp-int', stats.intCount); setTxt('pp-long', stats.longCount);
+
+    const timeMain = document.getElementById('pp-time-main');
+    if (timeMain) {
+        timeMain.innerHTML = `${Math.floor(stats.totalHours)}<span class="text-2xl text-gray-500">h</span> ${Math.round((stats.totalHours - Math.floor(stats.totalHours)) * 60)}<span class="text-2xl text-gray-500">m</span>`;
+    }
+
+    setTxt('pp-days', (stats.totalHours / 24).toFixed(1));
+    setTxt('pp-avg-time', formatTimeString(avg));
+    setTxt('pp-in-air', formatTimeString(stats.totalHours));
+    setTxt('pp-total-flights-box', stats.completedFlights);
+    setTxt('pp-dom', stats.domCount);
+    setTxt('pp-int', stats.intCount);
+    setTxt('pp-long', stats.longCount);
 
     setTxt('pp-rep-route', stats.repeatedRoutePct);
     setTxt('pp-avg-flights', stats.avgFlightsPerYear);
     setTxt('pp-timezones', stats.timezonesCrossed);
 }
-
 function renderFlightList(timeline) {
-document.getElementById('flight-list').innerHTML = timeline.map((f, i) => {
-    const logo = getAirlineLogoUrl(f.airline); 
-    const display = f.airline ? (logo ? `<img src="${logo}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
-    return `
-        <div class="flight-card bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 cursor-pointer opacity-0" onclick="window.focusFlightRoute('r-${i}', '${f.origin_code}', '${f.dest_code}')">
-            ${display} 
-            <div class="flex-1 min-w-0">
-                <div class="flex justify-between items-center mb-0.5">
-                    <span class="font-bold truncate">${f.origin_code} ✈️ ${f.dest_code}</span>
-                    <div class="flex items-center gap-1 shrink-0 ml-2">
-                        <span class="text-[10px] px-2 py-0.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 font-bold mr-1">ID: ${f.id}</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date ? f.flight_date.substring(0,4) : ''}</span>
-                        <button onclick="event.stopPropagation(); window.editFlight('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">✏️</button>
-                        <button onclick="event.stopPropagation(); window.deleteFlightHandler('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">🗑️</button>
+    const countEl = document.getElementById('recent-log-count');
+    if (countEl) {
+        countEl.innerText = `${timeline.length} logs`;
+    }
+
+    document.getElementById('flight-list').innerHTML = timeline.map((f, i) => {
+        const logo = getAirlineLogoUrl(f.airline); 
+        const display = f.airline ? (logo ? `<img src="${logo}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
+        return `
+            <div class="flight-card bg-white/5 p-3 rounded-xl mb-2 flex items-center gap-3 cursor-pointer opacity-0" onclick="window.focusFlightRoute('r-${i}', '${f.origin_code}', '${f.dest_code}')">
+                ${display} 
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="font-bold truncate">${f.origin_code} ✈️ ${f.dest_code}</span>
+                        <div class="flex items-center gap-1 shrink-0 ml-2">
+                            <span class="text-[10px] px-2 py-0.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 font-bold mr-1">ID: ${f.id}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date ? f.flight_date.substring(0,4) : ''}</span>
+                            <button onclick="event.stopPropagation(); window.editFlight('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">✏️</button>
+                            <button onclick="event.stopPropagation(); window.deleteFlightHandler('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">🗑️</button>
+                        </div>
                     </div>
+                    <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${formatTimeString(f.flight_hours)} · ${Math.round(f.distance)}km</div>
                 </div>
-                <div class="text-[10px] text-gray-400 truncate">${[f.airline, f.flight_number].filter(Boolean).join(' ')} · ${formatTimeString(f.flight_hours)} · ${Math.round(f.distance)}km</div>
-            </div>
-        </div>`;
-}).join('');
+            </div>`;
+    }).join('');
 
     if (animate && stagger) {
         animate(".flight-card", { x: [-30, 0], opacity: [0, 1] }, { delay: stagger(0.05), duration: 0.4, easing: "ease-out" });
@@ -1008,10 +1054,63 @@ window.smartSplitFlight = function(e) {
         if(flightNumInput) flightNumInput.value = match[2];
     }
 };
-document.getElementById('flightForm').addEventListener('change', window.smartSplitFlight);
+window.smartSplitFlight = function(rawValue) {
+    if (!rawValue) return;
 
-window.openAddModal = () => { editingFlightId = null; document.getElementById('flightForm').reset(); document.getElementById('submitBtn').innerText = '儲存 Save'; document.querySelector('#addFlightModal h2').innerText = '新增航班 Add Flight'; toggleModal('addFlightModal'); };
+    let val = String(rawValue).toUpperCase().replace(/[\s-]/g, '');
 
+    // 純數字不要拆
+    if (/^[0-9]{1,4}[A-Z]?$/.test(val)) return;
+
+    const airlineInput = document.getElementById('inp-airline');
+    const flightNumInput = document.getElementById('inp-flight-number');
+
+    // 先優先判斷 2 碼 IATA 航司代碼
+    const firstTwo = val.slice(0, 2);
+    const restAfterTwo = val.slice(2);
+
+    if (airlineDB[firstTwo] && /^[0-9]{1,4}[A-Z]?$/.test(restAfterTwo)) {
+        if (airlineInput) airlineInput.value = firstTwo;
+        if (flightNumInput) flightNumInput.value = restAfterTwo;
+        return;
+    }
+
+    // 再退回 3 碼代碼邏輯（例如少數你自己想手動輸入的情境）
+    const firstThree = val.slice(0, 3);
+    const restAfterThree = val.slice(3);
+
+    if (/^[A-Z0-9]{3}$/.test(firstThree) && /^[0-9]{1,4}[A-Z]?$/.test(restAfterThree)) {
+        if (airlineInput) airlineInput.value = firstThree;
+        if (flightNumInput) flightNumInput.value = restAfterThree;
+        return;
+    }
+};
+
+const quickFlightInput = document.getElementById('inp-flight-quick');
+if (quickFlightInput) {
+    quickFlightInput.addEventListener('input', (e) => {
+        window.smartSplitFlight(e.target.value);
+    });
+}
+
+window.openAddModal = () => {
+    editingFlightId = null;
+
+    document.getElementById('flightForm').reset();
+    document.getElementById('submitBtn').innerText = '儲存 Save';
+    document.querySelector('#addFlightModal h2').innerText = '新增航班 Add Flight';
+
+    const engineeringPanel = document.getElementById('track-engineering-panel');
+    if (engineeringPanel) engineeringPanel.open = false;
+
+    const csvFlightId = document.getElementById('csv-flight-id');
+    if (csvFlightId) csvFlightId.value = '';
+
+    const advancedFlightFields = document.getElementById('flight-advanced-fields');
+    if (advancedFlightFields) advancedFlightFields.open = false;
+
+    toggleModal('addFlightModal');
+};
 window.deleteFlightHandler = async (id) => { if(await deleteFlight(id)) fetchFlights(); };
 
 window.editFlight = (id) => {
@@ -1022,8 +1121,21 @@ window.editFlight = (id) => {
     const sVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
     sVal('inp-date', f.flight_date); sVal('inp-takeoff', f.takeoff_time); sVal('inp-landing', f.landing_time);
     sVal('inp-origin', f.origin_code); sVal('inp-dest', f.dest_code); sVal('inp-airline', f.airline); sVal('inp-flight-number', f.flight_number); sVal('inp-type', f.aircraft_type);
+        const quickInput = document.getElementById('inp-flight-quick');
+if (quickInput) {
+    quickInput.value = `${f.airline || ''}${f.flight_number || ''}`;
+}
+
+const advancedFlightFields = document.getElementById('flight-advanced-fields');
+if (advancedFlightFields) advancedFlightFields.open = false;
+
     sVal('inp-seat-class', f.seat_class); sVal('inp-seat-type', f.seat_type); sVal('inp-seat', f.seat);
     const exitRowEl = document.getElementById('inp-exit-row'); if(exitRowEl) exitRowEl.checked = f.is_exit_row || false;
+    const csvFlightId = document.getElementById('csv-flight-id');
+    if (csvFlightId) csvFlightId.value = f.id || '';
+
+    const engineeringPanel = document.getElementById('track-engineering-panel');
+    if (engineeringPanel) engineeringPanel.open = false;   
     
     document.getElementById('submitBtn').innerText = '更新 Update'; 
     document.querySelector('#addFlightModal h2').innerText = '編輯航班 Edit Flight';
