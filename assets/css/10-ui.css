@@ -1,0 +1,93 @@
+summary {
+    list-style: none;
+}
+summary::-webkit-details-marker {
+    display: none;
+}
+
+.tools-dropdown {
+    min-width: 260px;
+    max-width: 280px;
+}
+
+details[open] > summary {
+    border-color: rgba(255,255,255,0.14);
+    box-shadow:
+        0 12px 28px -10px rgba(0, 0, 0, 0.55),
+        0 0 16px rgba(56, 189, 248, 0.08);
+}
+
+@media (max-width: 767px) {
+    .tools-dropdown {
+        width: 220px;
+        min-width: 220px;
+    }
+}
+html {
+    scroll-behavior: smooth;
+}
+
+.passport-nav {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.passport-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.2s ease;
+}
+
+.passport-nav-link:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.14);
+}
+
+.scroll-mt-28 {
+    scroll-margin-top: 110px;
+}
+.year-chip {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.72);
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.year-chip:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border-color: rgba(255,255,255,0.14);
+}
+
+.year-chip--active {
+    background: rgba(255,255,255,0.16);
+    color: #fff;
+    border-color: rgba(255,255,255,0.2);
+    box-shadow: 0 0 14px rgba(255,255,255,0.06);
+}
+
+.icon-action-btn {
+    opacity: 0.42;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    font-size: 12px;
+    margin-left: 2px;
+}
+
+.icon-action-btn:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+}

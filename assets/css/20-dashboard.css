@@ -1,0 +1,111 @@
+.empty-state-card {
+    border: 1px dashed rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03);
+    border-radius: 18px;
+    padding: 20px 14px;
+    text-align: center;
+    margin-top: 6px;
+}
+.dashboard-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.stat-card--full {
+    grid-column: 1 / -1;
+}
+
+.stat-card {
+    background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.stat-card--accent {
+    border-color: rgba(56,189,248,0.18);
+    background: linear-gradient(145deg, rgba(56,189,248,0.10), rgba(255,255,255,0.03));
+}
+
+.stat-card--route {
+    border-color: rgba(250,204,21,0.14);
+    background: linear-gradient(145deg, rgba(250,204,21,0.06), rgba(255,255,255,0.03));
+}
+
+.stat-card-route {
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 800;
+    color: #facc15;
+    word-break: break-word;
+}
+
+.stat-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 0.04em;
+}
+
+.stat-card-value {
+    margin-top: 6px;
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 800;
+    color: #fff;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.stat-card--accent .stat-card-value {
+    color: #38bdf8;
+}
+
+.stat-card-unit {
+    font-size: 11px;
+    color: rgba(255,255,255,0.36);
+    font-weight: 700;
+}
+
+.stat-card-sub {
+    margin-top: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.34);
+}
+
+.stat-card-route {
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 800;
+    color: #facc15;
+    word-break: break-word;
+}
+
+@media (max-width: 767px) {
+    .stat-card {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .stat-card-value {
+        font-size: 1.75rem;
+    }
+
+    .stat-card-route {
+        font-size: 14px;
+    }
+}
+.icon-action-btn {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.icon-action-btn:hover {
+    opacity: 1;
+}
