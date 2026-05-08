@@ -109,19 +109,3 @@
 .icon-action-btn:hover {
     opacity: 1;
 }
-
-/* solid cards over translucent clutter */
-.dashboard-stats-grid .stat-card,
-#dashboard-insights .insight-card,
-#flight-list .flight-card {
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.012)), var(--surface-elevated);
-  border: 1px solid var(--surface-border);
-  box-shadow: 0 20px 36px -28px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.03);
-}
-
-#flight-list .flight-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(56,189,248,0.22);
-  box-shadow: 0 24px 42px -28px rgba(0,0,0,0.95), 0 0 0 1px rgba(56,189,248,0.08);
-}

@@ -123,13 +123,7 @@ function formatTimeString(hrs) { if(!hrs) return '0h 0m'; const h = Math.floor(h
 
 function triggerReactRender() {
     let filtered = flightsState.filter(f => (currentYearFilter === 'ALL' || (f.flight_date && f.flight_date.startsWith(currentYearFilter))));
-    const q = (currentFlightSearch || '').trim().toUpperCase();
-    if (q) {
-        filtered = filtered.filter(f => [f.origin_code, f.dest_code, f.airline, f.flight_number, f.aircraft_type, f.seat, f.flight_date]
-            .filter(Boolean).join(' ').toUpperCase().includes(q));
-    }
     const stats = calculateStats(filtered);
-    stats.timeline = sortFlightTimeline(stats.timeline);
     
     renderFilters();
     renderDashboard(stats);
@@ -162,15 +156,6 @@ function renderFilters() {
 }
 window.filterByYear = (y) => { currentYearFilter = y; triggerReactRender(); }
 
-function sortFlightTimeline(timeline) {
-    const list = [...timeline];
-    const dateScore = f => new Date(`${f.flight_date || '1970-01-01'}T${f.takeoff_time || '00:00'}:00`).getTime();
-    if (currentFlightSort === 'date_asc') return list.sort((a,b) => dateScore(a) - dateScore(b));
-    if (currentFlightSort === 'distance_desc') return list.sort((a,b) => (b.distance || 0) - (a.distance || 0));
-    if (currentFlightSort === 'airline_asc') return list.sort((a,b) => `${a.airline || ''}${a.flight_number || ''}`.localeCompare(`${b.airline || ''}${b.flight_number || ''}`));
-    return list.sort((a,b) => dateScore(b) - dateScore(a));
-}
-
 function renderDashboard(stats) {
     const setTxt = (id, txt) => {
         const e = document.getElementById(id);
@@ -182,7 +167,6 @@ function renderDashboard(stats) {
     setTxt('stat-trips', stats.tripsCount);
 
     setTxt('sb-long-route', '--');
-    renderDashboardInsights(stats);
     setTxt('pp-short-route', '--');
     setTxt('pp-short-dist', '--');
     setTxt('pp-long-route', '--');
@@ -225,47 +209,13 @@ function renderDashboard(stats) {
     setTxt('pp-avg-flights', stats.avgFlightsPerYear);
     setTxt('pp-timezones', stats.timezonesCrossed);
 }
-function renderDashboardInsights(stats) {
-    const box = document.getElementById('dashboard-insights');
-    if (!box) return;
-    if (!stats.completedFlights) {
-        box.innerHTML = '';
-        return;
-    }
-    const years = Object.keys(stats.yearlyDist).sort();
-    const latestYear = years[years.length - 1];
-    const latestYearFlights = latestYear ? stats.timeline.filter(f => f.flight_date && f.flight_date.startsWith(latestYear)).length : 0;
-    const topAirline = Object.entries(stats.freq.airlines).sort((a,b)=>b[1]-a[1])[0];
-    const uniqueAirports = Object.keys(stats.airportStats).length;
-    box.innerHTML = `
-        <div class="insight-card"><div class="insight-label">Current Year</div><div class="insight-value">${latestYear || '--'} · ${latestYearFlights} flights</div><div class="insight-sub">年度飛行熱度</div></div>
-        <div class="insight-card"><div class="insight-label">Network</div><div class="insight-value">${uniqueAirports} airports unlocked</div><div class="insight-sub">航點覆蓋數</div></div>
-        <div class="insight-card"><div class="insight-label">Top Carrier</div><div class="insight-value">${topAirline ? `${topAirline[0]} · ${topAirline[1]}x` : '--'}</div><div class="insight-sub">最常搭航司</div></div>`;
-}
-
-function renderEmptyFlightState() {
-    return `<div class="empty-state-card">
-        <div class="text-[11px] uppercase tracking-[0.2em] text-sky-400 font-black">Start fast</div>
-        <div class="text-lg font-black mt-1">還沒有符合條件的航班</div>
-        <div class="text-xs text-gray-400 mt-2 leading-relaxed">先新增第一筆，或匯入 CSV。資料進來後，地圖、統計、排行會自動生成。</div>
-        <div class="empty-state-actions">
-            <button class="empty-state-btn" onclick="openAddModal()">＋ 新增第一筆航班</button>
-            <label class="empty-state-btn cursor-pointer">⬆ 匯入 CSV <input type="file" accept=".csv" class="hidden" onchange="importCSV(event)"></label>
-            <button class="empty-state-btn" onclick="loadDemoFlights()">▣ 載入示範資料</button>
-        </div>
-    </div>`;
-}
-
 function renderFlightList(timeline) {
     const countEl = document.getElementById('recent-log-count');
     if (countEl) {
         countEl.innerText = `${timeline.length} logs`;
     }
 
-    const listEl = document.getElementById('flight-list');
-    if (!timeline.length) { listEl.innerHTML = renderEmptyFlightState(); return; }
-
-    listEl.innerHTML = timeline.map((f, i) => {
+    document.getElementById('flight-list').innerHTML = timeline.map((f, i) => {
         const logo = getAirlineLogoUrl(f.airline); 
         const display = f.airline ? (logo ? `<img src="${logo}" class="w-6 h-6 rounded-full object-contain bg-white/5 p-0.5 shrink-0">` : f.airline) : '';
         return `
@@ -278,7 +228,6 @@ function renderFlightList(timeline) {
                             <span class="text-[10px] px-2 py-0.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 font-bold mr-1">ID: ${f.id}</span>
                             <span class="text-[10px] px-2 py-0.5 rounded-full border border-white/20 text-gray-300 mr-1">${f.flight_date ? f.flight_date.substring(0,4) : ''}</span>
                             <button onclick="event.stopPropagation(); window.editFlight('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">✏️</button>
-                            <button onclick="event.stopPropagation(); window.duplicateFlight('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1" title="複製">⧉</button>
                             <button onclick="event.stopPropagation(); window.deleteFlightHandler('${f.id}')" class="opacity-50 hover:opacity-100 text-xs ml-1">🗑️</button>
                         </div>
                     </div>
@@ -287,25 +236,8 @@ function renderFlightList(timeline) {
             </div>`;
     }).join('');
 
-    if (window.appMotion && window.appMotion.enabled() && animate && stagger) {
-        animate(".flight-card", { x: [-18, 0], opacity: [0, 1] }, { delay: stagger(0.04), duration: window.appMotion.tokens.base, easing: "ease-out" });
+    if (animate && stagger) {
+        animate(".flight-card", { x: [-30, 0], opacity: [0, 1] }, { delay: stagger(0.05), duration: 0.4, easing: "ease-out" });
     }
 }
 
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    const search = document.getElementById('flight-search');
-    const sort = document.getElementById('flight-sort');
-    const signalSwitch = document.getElementById('signal-range-switch');
-    if (search) search.addEventListener('input', (e) => { currentFlightSearch = e.target.value || ''; if (isAppInitialized) triggerReactRender(); });
-    if (sort) sort.addEventListener('change', (e) => { currentFlightSort = e.target.value || 'date_desc'; if (isAppInitialized) triggerReactRender(); });
-    if (signalSwitch) {
-        signalSwitch.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-range]');
-            if (!btn) return;
-            currentSignalRange = btn.dataset.range || '1Y';
-            if (isAppInitialized) triggerReactRender();
-        });
-    }
-});
