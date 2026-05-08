@@ -8,6 +8,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let airportDB = {}; 
 let editingFlightId = null;
 let currentYearFilter = 'ALL';
+let currentFlightSearch = '';
+let currentFlightSort = 'date_desc';
+let currentSignalRange = '1Y';
 let animationState = { startTime: 0, planes: [], isRunning: false };
 let isAppInitialized = false;
 let isGlobe = true;
@@ -65,6 +68,13 @@ function hideLoginOverlay() {
 document.addEventListener('DOMContentLoaded', checkAuth);
 
 // Framer Motion
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const motionTokens = { fast: 0.16, base: 0.24, slow: 0.36, spring: { type: 'spring', bounce: 0.16, duration: 0.42 } };
+window.appMotion = {
+    prefersReducedMotion,
+    tokens: motionTokens,
+    enabled: () => Boolean(animate) && !prefersReducedMotion.matches
+};
 let animate, stagger, spring;
 import("https://cdn.jsdelivr.net/npm/motion@11.11.13/+esm").then(module => {
     animate = module.animate; stagger = module.stagger; spring = module.spring;

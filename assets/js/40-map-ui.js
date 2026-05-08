@@ -1,18 +1,29 @@
 window.toggleModal = function(id) {
     const el = document.getElementById(id);
+    if (!el) return;
     const panel = el.querySelector('.modal-panel');
-    if(el.classList.contains('hidden')) {
+    const motionOn = window.appMotion && window.appMotion.enabled();
+    const tokens = (window.appMotion && window.appMotion.tokens) || { fast: 0.16, base: 0.24, spring: { type: 'spring', bounce: 0.16, duration: 0.42 } };
+
+    if (el.classList.contains('hidden')) {
         el.classList.remove('hidden');
-        if(animate) {
-            animate(el, { opacity: [0, 1] }, { duration: 0.2 });
-            animate(panel, { scale: [0.9, 1], y: [30, 0], opacity: [0, 1] }, { type: "spring", bounce: 0.4, duration: 0.6 });
+        el.style.opacity = '1';
+        if (panel) {
+            panel.style.opacity = '1';
+            panel.style.transform = 'translateY(0) scale(1)';
+        }
+        if (motionOn) {
+            animate(el, { opacity: [0, 1] }, { duration: tokens.fast, easing: 'ease-out' });
+            if (panel) animate(panel, { scale: [0.975, 1], y: [16, 0], opacity: [0, 1] }, tokens.spring);
         }
     } else {
-        if(animate) {
-            animate(el, { opacity: 0 }, { duration: 0.3 });
-            animate(panel, { scale: 0.9, y: 30, opacity: 0 }, { duration: 0.3 });
-            setTimeout(() => el.classList.add('hidden'), 300);
-        } else el.classList.add('hidden');
+        if (motionOn) {
+            animate(el, { opacity: [1, 0] }, { duration: tokens.base, easing: 'ease-out' });
+            if (panel) animate(panel, { scale: [1, 0.985], y: [0, 12], opacity: [1, 0] }, { duration: tokens.base, easing: 'ease-out' });
+            setTimeout(() => el.classList.add('hidden'), Math.round(tokens.base * 1000));
+        } else {
+            el.classList.add('hidden');
+        }
     }
 };
 
