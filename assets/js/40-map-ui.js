@@ -46,6 +46,104 @@ window.toggleNightMode = function() {
     if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
 };
 
+const ROUTE_ANIMATION_MODE_DRAW = 'draw';
+const ROUTE_ANIMATION_MODE_ALL = 'all';
+let routeAnimationMode = ROUTE_ANIMATION_MODE_DRAW;
+
+function ensureRouteAnimationModeButton() {
+    if (document.getElementById('btn-route-animation-mode')) return;
+
+    const toolsGrid = document.querySelector('.tools-dropdown .grid');
+    if (!toolsGrid) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'btn-route-animation-mode';
+    btn.type = 'button';
+    btn.onclick = () => window.toggleRouteAnimationMode();
+    btn.className = 'text-xs font-bold transition-colors text-left px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10';
+
+    const fleetBtn = document.getElementById('btn-fleet-radar');
+    if (fleetBtn && fleetBtn.parentElement === toolsGrid && fleetBtn.nextSibling) {
+        toolsGrid.insertBefore(btn, fleetBtn.nextSibling);
+    } else {
+        toolsGrid.prepend(btn);
+    }
+
+    updateRouteAnimationModeButton();
+}
+
+function updateRouteAnimationModeButton() {
+    const btn = document.getElementById('btn-route-animation-mode');
+    if (!btn) return;
+
+    const isAllRoutesMode = routeAnimationMode === ROUTE_ANIMATION_MODE_ALL;
+    btn.innerText = isAllRoutesMode ? '🟢 航線動畫：全線常駐' : '✏️ 航線動畫：邊飛邊畫';
+    btn.title = isAllRoutesMode
+        ? '所有軌跡線條同時呈現，所有飛機同時在線上循環飛行'
+        : '一次一架飛機沿軌跡飛行，飛過去的同時逐步畫線';
+    btn.classList.toggle('text-green-400', isAllRoutesMode);
+    btn.classList.toggle('text-purple-300', !isAllRoutesMode);
+}
+
+window.toggleRouteAnimationMode = function() {
+    routeAnimationMode = routeAnimationMode === ROUTE_ANIMATION_MODE_DRAW
+        ? ROUTE_ANIMATION_MODE_ALL
+        : ROUTE_ANIMATION_MODE_DRAW;
+
+    updateRouteAnimationModeButton();
+    resetRouteAnimationMode();
+};
+
+function makeRouteFeature(coords) {
+    return { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coords } };
+}
+
+function setRouteSourceData(routeId, coords, drawFullLine) {
+    if (!map.getSource(routeId)) return;
+
+    map.getSource(routeId).setData({
+        'type': 'FeatureCollection',
+        'features': drawFullLine ? [makeRouteFeature(coords)] : []
+    });
+}
+
+function resetRouteAnimationMode() {
+    if (!animationState || !animationState.planes) return;
+
+    animationState.currentPlaneIndex = 0;
+    animationState.allRoutesStartTime = null;
+    cinematicMode = false;
+    followedPlaneObj = null;
+
+    const planeCount = Math.max(animationState.planes.length, 1);
+    animationState.planes.forEach((plane, index) => {
+        plane.startTime = null;
+        plane.segmentCache = null;
+        plane.totalDist = null;
+        plane.currentSegmentIndex = 0;
+        plane.currentBearing = null;
+        plane.currentRoll = 0;
+        plane.lastLineUpdate = 0;
+        plane.fullLineDrawn = routeAnimationMode === ROUTE_ANIMATION_MODE_ALL;
+        plane.allRoutesOffsetRatio = index / planeCount;
+        plane.marker.getElement().style.opacity = routeAnimationMode === ROUTE_ANIMATION_MODE_ALL ? 1 : 0;
+        plane.marker.setLngLat(plane.coords[0]);
+        setRouteSourceData(plane.id, plane.coords, routeAnimationMode === ROUTE_ANIMATION_MODE_ALL);
+    });
+
+    const status = document.getElementById('db-status');
+    if (status) {
+        status.innerHTML = routeAnimationMode === ROUTE_ANIMATION_MODE_ALL
+            ? '系統上線 Online <span class="text-xs text-green-400 ml-2">全線常駐模式</span>'
+            : '系統上線 Online <span class="text-xs text-purple-300 ml-2">邊飛邊畫模式</span>';
+    }
+
+    if (!animationState.isRunning && animationState.planes.length > 0) {
+        animationState.isRunning = true;
+        requestAnimationFrame(globalAnimationLoop);
+    }
+}
+
 const map = new mapboxgl.Map({ 
     container: 'map', 
     style: 'mapbox://styles/mapbox/satellite-streets-v12', 
@@ -90,6 +188,9 @@ map.on('style.load', () => {
 
     const btnNight = document.getElementById('btn-night-toggle');
     if (btnNight) btnNight.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
+
+    ensureRouteAnimationModeButton();
+    updateRouteAnimationModeButton();
     
     if (isAppInitialized) {
         triggerReactRender();
@@ -97,6 +198,8 @@ map.on('style.load', () => {
 });
 
 function renderMapFeatures(stats) {
+    ensureRouteAnimationModeButton();
+
     let airFeats = [];
     for (let [code, count] of Object.entries(stats.freq.airports)) {
         if (airportDB[code]) airFeats.push({ type: 'Feature', properties: { code, count, name: airportDB[code].name, city: airportDB[code].city }, geometry: { type: 'Point', coordinates: airportDB[code].coords } });
@@ -127,10 +230,13 @@ function renderMapFeatures(stats) {
     
     animationState.planes = [];
     animationState.currentPlaneIndex = 0;
+    animationState.allRoutesStartTime = null;
 
+    const planeCount = Math.max(stats.timeline.length, 1);
     stats.timeline.forEach((f, i) => {
         const routeId = `r-${i}`;
-        map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+        const shouldDrawFullLine = routeAnimationMode === ROUTE_ANIMATION_MODE_ALL;
+        map.addSource(routeId, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': shouldDrawFullLine ? [makeRouteFeature(f.routeCoords)] : [] } });
         map.addLayer({ 'id': `${routeId}-line`, 'type': 'line', 'source': routeId, 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': f.routeColor, 'line-width': 3, 'line-opacity': 0.85 } });
         
         const elContainer = document.createElement('div'); 
@@ -157,10 +263,21 @@ function renderMapFeatures(stats) {
             pitchAlignment: 'map',    // 讓機身貼齊 3D 地平線，而不是貼齊使用者的螢幕
             rotationAlignment: 'map'  // 讓旋轉的 0 度永遠指向正北，而非螢幕正上方
         }).setLngLat(f.routeCoords[0]).addTo(map);
-        planeMarker.getElement().style.opacity = 0;
+        planeMarker.getElement().style.opacity = shouldDrawFullLine ? 1 : 0;
         const actualHours = f.flight_hours || ((f.distance / 850) + 0.5);
-        animationState.planes.push({ id: routeId, marker: planeMarker, icon: planeIcon, coords: f.routeCoords, flightHours: actualHours, startTime: null });
+        animationState.planes.push({
+            id: routeId,
+            marker: planeMarker,
+            icon: planeIcon,
+            coords: f.routeCoords,
+            flightHours: actualHours,
+            startTime: null,
+            allRoutesOffsetRatio: i / planeCount,
+            fullLineDrawn: shouldDrawFullLine
+        });
     });
+
+    updateRouteAnimationModeButton();
 
     if(!animationState.isRunning && animationState.planes.length > 0) { 
         animationState.isRunning = true; 
@@ -197,13 +314,147 @@ function buildTrajectoryCache(coords) {
     // 防呆：如果軌跡異常，給個預設值避免崩潰
     if (cache.length === 0) {
         cache.push({ startDist: 0, endDist: 0.1, length: 0.1, p1: coords[0]||[0,0], p2: coords[0]||[0,0], bearing: 0 });
+        accumulatedDist = 0.1;
     }
-    return { cache, totalDist: accumulatedDist };
+    return { cache, totalDist: accumulatedDist || 0.1 };
+}
+
+function ensurePlaneTrajectory(p) {
+    if (p.segmentCache) return;
+
+    const trajectory = buildTrajectoryCache(p.coords);
+    p.segmentCache = trajectory.cache;
+    p.totalDist = trajectory.totalDist;
+    p.currentSegmentIndex = 0;
+    p.currentBearing = trajectory.cache[0].bearing;
+    p.lastLineUpdate = 0;
+    p.currentRoll = p.currentRoll || 0;
+}
+
+function updatePlaneMotion(p, progress, timestamp, shouldDrawProgressLine) {
+    ensurePlaneTrajectory(p);
+
+    const currentDist = Math.max(0, Math.min(1, progress)) * p.totalDist;
+    let segIdx = p.currentSegmentIndex || 0;
+
+    if (currentDist < p.segmentCache[segIdx].startDist) segIdx = 0;
+    while (segIdx < p.segmentCache.length - 1 && currentDist > p.segmentCache[segIdx].endDist) {
+        segIdx++;
+    }
+    p.currentSegmentIndex = segIdx;
+
+    const activeSeg = p.segmentCache[segIdx];
+    let segmentProgress = 0;
+    if (activeSeg.length > 0) {
+        segmentProgress = (currentDist - activeSeg.startDist) / activeSeg.length;
+    }
+    segmentProgress = Math.max(0, Math.min(1, segmentProgress));
+
+    // 2. 輕量級 LERP：計算飛機當下的平滑座標 (60 FPS)
+    const smoothLng = activeSeg.p1[0] + (activeSeg.p2[0] - activeSeg.p1[0]) * segmentProgress;
+    const smoothLat = activeSeg.p1[1] + (activeSeg.p2[1] - activeSeg.p1[1]) * segmentProgress;
+    
+    // 3. ✈️ 飛機本體陀螺儀避震 (過濾 GPS 雜訊)
+    let targetPlaneBearing = activeSeg.bearing;
+    let planeBDiff = targetPlaneBearing - p.currentBearing;
+    while (planeBDiff > 180) planeBDiff -= 360;
+    while (planeBDiff < -180) planeBDiff += 360;
+    // 讓飛機轉向平滑過渡 (0.1 的靈敏度)
+    p.currentBearing += planeBDiff * 0.1; 
+    
+    p.marker.setLngLat([smoothLng, smoothLat]); 
+    // 1. 計算預期側傾角 (目標轉向差 * 放大係數)
+    // 轉彎越急，planeBDiff 越大，飛機傾斜就越深
+    let targetRoll = planeBDiff * 12; 
+
+    // 2. 限制最大側傾角，避免飛機翻肚 (限制在正負 55 度內)
+    targetRoll = Math.max(-55, Math.min(55, targetRoll));
+
+    // 3. 側傾角 LERP 平滑過渡 (讓壓車和回正的動作像真實物理一樣柔和)
+    p.currentRoll = p.currentRoll || 0;
+    p.currentRoll += (targetRoll - p.currentRoll) * 0.08;
+
+    // 4. 套用雙軸 3D 旋轉 (Z軸管航向，Y軸管側傾)
+    // 注意：SVG 機頭已經是正的，所以不需要再 -45 度了！
+    p.icon.style.transform = `rotateZ(${p.currentBearing}deg) rotateY(${p.currentRoll}deg)`;
+    // 如果在機隊模式(renderFleet)中，變數可能是 p.el.style.transform 
+
+    // 🎥 4. 終極避震運鏡：虛擬攝影機物理學 (60 FPS)
+    if (cinematicMode && followedPlaneObj === p) {
+        const targetLng = smoothLng;
+        const targetLat = smoothLat;
+        // 攝影機追蹤飛機「平滑化後」的航向
+        const targetCamBearing = p.currentBearing; 
+        const targetPitch = 65;
+        const targetZoom = 6.5;
+
+        cinematicCamera.lng += (targetLng - cinematicCamera.lng) * 0.1;
+        cinematicCamera.lat += (targetLat - cinematicCamera.lat) * 0.1;
+
+        let camBDiff = targetCamBearing - cinematicCamera.bearing;
+        while (camBDiff > 180) camBDiff -= 360;
+        while (camBDiff < -180) camBDiff += 360;
+        cinematicCamera.bearing += camBDiff * 0.03; // 更重的攝影機阻尼
+
+        cinematicCamera.pitch += (targetPitch - cinematicCamera.pitch) * 0.05;
+        cinematicCamera.zoom += (targetZoom - cinematicCamera.zoom) * 0.05;
+
+        map.jumpTo({
+            center: [cinematicCamera.lng, cinematicCamera.lat],
+            bearing: cinematicCamera.bearing,
+            pitch: cinematicCamera.pitch,
+            zoom: cinematicCamera.zoom
+        });
+    }
+
+    // 🟢 5. 軌跡線繪製「效能節流」 (Throttle) - 解決地震的絕對關鍵！
+    // 限制每 100 毫秒 (約 10 FPS) 才向 GPU 更新一次線條
+    if (shouldDrawProgressLine && timestamp - p.lastLineUpdate > 100) {
+        p.lastLineUpdate = timestamp;
+        if (map.getSource(p.id)) {
+            const drawnCoords = p.coords.slice(0, segIdx + 1);
+            drawnCoords.push([smoothLng, smoothLat]);
+            
+            map.getSource(p.id).setData({ 
+                'type': 'FeatureCollection', 
+                'features': [makeRouteFeature(drawnCoords)] 
+            });
+        }
+    }
+}
+
+function runAllRoutesAnimation(timestamp) {
+    if (!animationState.allRoutesStartTime) {
+        animationState.allRoutesStartTime = timestamp;
+    }
+
+    const planeCount = Math.max(animationState.planes.length, 1);
+    animationState.planes.forEach((p, index) => {
+        ensurePlaneTrajectory(p);
+
+        if (!p.fullLineDrawn) {
+            setRouteSourceData(p.id, p.coords, true);
+            p.fullLineDrawn = true;
+        }
+
+        p.marker.getElement().style.opacity = 1;
+        const totalDurationMs = Math.max((p.flightHours || 1) * TIME_SCALE, 1);
+        const offsetRatio = p.allRoutesOffsetRatio ?? (index / planeCount);
+        const elapsed = (timestamp - animationState.allRoutesStartTime) + (totalDurationMs * offsetRatio);
+        const progress = (elapsed % totalDurationMs) / totalDurationMs;
+        updatePlaneMotion(p, progress, timestamp, false);
+    });
 }
 
 // 🚀 完整替換：主畫面動畫引擎 (搭載效能節流與雙重避震)
 function globalAnimationLoop(timestamp) {
     if (!animationState.isRunning || animationState.planes.length === 0) return;
+
+    if (routeAnimationMode === ROUTE_ANIMATION_MODE_ALL) {
+        runAllRoutesAnimation(timestamp);
+        requestAnimationFrame(globalAnimationLoop);
+        return;
+    }
 
     let currentIndex = animationState.currentPlaneIndex;
     let p = animationState.planes[currentIndex];
@@ -211,115 +462,20 @@ function globalAnimationLoop(timestamp) {
     if (!p.startTime) {
         p.startTime = timestamp;
         p.marker.getElement().style.opacity = 1;
-        
-        if (!p.segmentCache) {
-            const trajectory = buildTrajectoryCache(p.coords);
-            p.segmentCache = trajectory.cache;
-            p.totalDist = trajectory.totalDist;
-            p.currentSegmentIndex = 0;
-            p.currentBearing = trajectory.cache[0].bearing; // 初始化飛機陀螺儀
-            p.lastLineUpdate = 0; // 用來控制畫線頻率的計時器
-        }
+        ensurePlaneTrajectory(p);
     }
 
-    const totalDurationMs = p.flightHours * TIME_SCALE;
+    const totalDurationMs = Math.max((p.flightHours || 1) * TIME_SCALE, 1);
     let progress = (timestamp - p.startTime) / totalDurationMs;
 
     if (progress < 1) {
-        const currentDist = progress * p.totalDist;
-        
-        // 1. 快速尋找目前所在的航段 (O(1) 效能尋址)
-        let segIdx = p.currentSegmentIndex || 0;
-        while (segIdx < p.segmentCache.length - 1 && currentDist > p.segmentCache[segIdx].endDist) {
-            segIdx++;
-        }
-        p.currentSegmentIndex = segIdx;
-
-        const activeSeg = p.segmentCache[segIdx];
-        
-        let segmentProgress = 0;
-        if (activeSeg.length > 0) {
-            segmentProgress = (currentDist - activeSeg.startDist) / activeSeg.length;
-        }
-
-        // 2. 輕量級 LERP：計算飛機當下的平滑座標 (60 FPS)
-        const smoothLng = activeSeg.p1[0] + (activeSeg.p2[0] - activeSeg.p1[0]) * segmentProgress;
-        const smoothLat = activeSeg.p1[1] + (activeSeg.p2[1] - activeSeg.p1[1]) * segmentProgress;
-        
-        // 3. ✈️ 飛機本體陀螺儀避震 (過濾 GPS 雜訊)
-        let targetPlaneBearing = activeSeg.bearing;
-        let planeBDiff = targetPlaneBearing - p.currentBearing;
-        while (planeBDiff > 180) planeBDiff -= 360;
-        while (planeBDiff < -180) planeBDiff += 360;
-        // 讓飛機轉向平滑過渡 (0.1 的靈敏度)
-        p.currentBearing += planeBDiff * 0.1; 
-        
-        p.marker.setLngLat([smoothLng, smoothLat]); 
-        // 1. 計算預期側傾角 (目標轉向差 * 放大係數)
-        // 轉彎越急，planeBDiff 越大，飛機傾斜就越深
-        let targetRoll = planeBDiff * 12; 
-
-        // 2. 限制最大側傾角，避免飛機翻肚 (限制在正負 55 度內)
-        targetRoll = Math.max(-55, Math.min(55, targetRoll));
-
-        // 3. 側傾角 LERP 平滑過渡 (讓壓車和回正的動作像真實物理一樣柔和)
-        p.currentRoll = p.currentRoll || 0;
-        p.currentRoll += (targetRoll - p.currentRoll) * 0.08;
-
-        // 4. 套用雙軸 3D 旋轉 (Z軸管航向，Y軸管側傾)
-        // 注意：SVG 機頭已經是正的，所以不需要再 -45 度了！
-        p.icon.style.transform = `rotateZ(${p.currentBearing}deg) rotateY(${p.currentRoll}deg)`;
-        // 如果在機隊模式(renderFleet)中，變數可能是 p.el.style.transform 
-
-        // 🎥 4. 終極避震運鏡：虛擬攝影機物理學 (60 FPS)
-        if (cinematicMode && followedPlaneObj === p) {
-            const targetLng = smoothLng;
-            const targetLat = smoothLat;
-            // 攝影機追蹤飛機「平滑化後」的航向
-            const targetCamBearing = p.currentBearing; 
-            const targetPitch = 65;
-            const targetZoom = 6.5;
-
-            cinematicCamera.lng += (targetLng - cinematicCamera.lng) * 0.1;
-            cinematicCamera.lat += (targetLat - cinematicCamera.lat) * 0.1;
-
-            let camBDiff = targetCamBearing - cinematicCamera.bearing;
-            while (camBDiff > 180) camBDiff -= 360;
-            while (camBDiff < -180) camBDiff += 360;
-            cinematicCamera.bearing += camBDiff * 0.03; // 更重的攝影機阻尼
-
-            cinematicCamera.pitch += (targetPitch - cinematicCamera.pitch) * 0.05;
-            cinematicCamera.zoom += (targetZoom - cinematicCamera.zoom) * 0.05;
-
-            map.jumpTo({
-                center: [cinematicCamera.lng, cinematicCamera.lat],
-                bearing: cinematicCamera.bearing,
-                pitch: cinematicCamera.pitch,
-                zoom: cinematicCamera.zoom
-            });
-        }
-
-        // 🟢 5. 軌跡線繪製「效能節流」 (Throttle) - 解決地震的絕對關鍵！
-        // 限制每 100 毫秒 (約 10 FPS) 才向 GPU 更新一次線條
-        if (timestamp - p.lastLineUpdate > 100) {
-            p.lastLineUpdate = timestamp;
-            if (map.getSource(p.id)) {
-                const drawnCoords = p.coords.slice(0, segIdx + 1);
-                drawnCoords.push([smoothLng, smoothLat]);
-                
-                map.getSource(p.id).setData({ 
-                    'type': 'FeatureCollection', 
-                    'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': drawnCoords } } ] 
-                });
-            }
-        }
-        
+        updatePlaneMotion(p, progress, timestamp, true);
     } else {
         // 飛機已抵達目的地
         if (map.getSource(p.id)) {
             map.getSource(p.id).setData({ 
                 'type': 'FeatureCollection', 
-                'features': [ { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': p.coords } } ] 
+                'features': [makeRouteFeature(p.coords)] 
             });
         }
         p.marker.getElement().style.opacity = 0;
@@ -337,6 +493,7 @@ function globalAnimationLoop(timestamp) {
                 plane.startTime = null;
                 plane.segmentCache = null;
                 plane.currentBearing = null;
+                plane.currentRoll = 0;
                 if (map.getSource(plane.id)) {
                     map.getSource(plane.id).setData({ 'type': 'FeatureCollection', 'features': [] });
                 }
@@ -379,7 +536,8 @@ window.focusFlightRoute = function(routeId, origin, dest) {
         cinematicCamera.pitch = map.getPitch();
         cinematicCamera.zoom = map.getZoom();
         
-        document.getElementById('db-status').innerHTML = '🎥 電影運鏡 Cinematic <span class="text-xs text-sky-400 ml-2 animate-pulse">Tracking</span>';
+        const trackingLabel = routeAnimationMode === ROUTE_ANIMATION_MODE_ALL ? 'All Routes Tracking' : 'Tracking';
+        document.getElementById('db-status').innerHTML = `🎥 電影運鏡 Cinematic <span class="text-xs text-sky-400 ml-2 animate-pulse">${trackingLabel}</span>`;
     } catch (e) {
         console.warn('無法聚焦此航線', e);
     }
