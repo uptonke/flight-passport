@@ -309,6 +309,18 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 <div>
+                    <label for="inp-origin-utc-offset" class="block text-xs text-gray-400 mb-1">出發地時區 Origin UTC</label>
+                    <input type="number" id="inp-origin-utc-offset" value="8" min="-12" max="14" step="0.25" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white" placeholder="例如：+8">
+                </div>
+                <div>
+                    <label for="inp-dest-utc-offset" class="block text-xs text-gray-400 mb-1">目的地時區 Dest UTC</label>
+                    <input type="number" id="inp-dest-utc-offset" value="8" min="-12" max="14" step="0.25" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white" placeholder="例如：+1 / +2 / -8">
+                </div>
+            </div>
+            <div class="text-[10px] text-gray-500 -mt-2">預設台北 UTC+8；巴塞隆納冬令 UTC+1、夏令 UTC+2；洛杉磯冬令 UTC-8、夏令 UTC-7。</div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                <div>
                     <label for="inp-origin" class="block text-xs text-gray-400 mb-1">出發地 Origin</label>
                     <input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3">
                 </div>

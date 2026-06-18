@@ -81,10 +81,75 @@ if (quickFlightInput) {
     });
 }
 
+
+const DEFAULT_UTC_OFFSET = 8;
+
+function normalizeUtcOffset(value, fallback = DEFAULT_UTC_OFFSET) {
+    if (value === null || value === undefined || value === '') return fallback;
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(-12, Math.min(14, n));
+}
+
+function setDefaultTimezoneFields() {
+    const originTz = document.getElementById('inp-origin-utc-offset');
+    const destTz = document.getElementById('inp-dest-utc-offset');
+    if (originTz) originTz.value = DEFAULT_UTC_OFFSET;
+    if (destTz) destTz.value = DEFAULT_UTC_OFFSET;
+}
+
+function parseDateParts(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+    return { y: parts[0], m: parts[1], d: parts[2] };
+}
+
+function parseTimeParts(timeStr) {
+    if (!timeStr) return null;
+    const parts = timeStr.split(':').map(Number);
+    if (parts.length < 2 || parts.some(n => !Number.isFinite(n))) return null;
+    return { h: parts[0], min: parts[1] };
+}
+
+function localDateTimeToUtcMs(dateStr, timeStr, utcOffset, dayShift = 0) {
+    const date = parseDateParts(dateStr);
+    const time = parseTimeParts(timeStr);
+    if (!date || !time) return null;
+    const offset = normalizeUtcOffset(utcOffset);
+    return Date.UTC(date.y, date.m - 1, date.d + dayShift, time.h, time.min) - offset * 60 * 60 * 1000;
+}
+
+function estimateFlightHoursByDistance(originCode, destCode) {
+    if (!airportDB[originCode] || !airportDB[destCode]) return null;
+    return (turf.distance(airportDB[originCode].coords, airportDB[destCode].coords, { units: 'kilometers' }) / 850) + 0.5;
+}
+
+function calculateFlightHoursWithUtcOffsets({ dateStr, takeoffTime, landingTime, originUtcOffset, destUtcOffset, originCode, destCode }) {
+    if (!dateStr || !takeoffTime || !landingTime) return null;
+
+    const depUtc = localDateTimeToUtcMs(dateStr, takeoffTime, originUtcOffset, 0);
+    if (depUtc === null) return null;
+
+    const distanceEstimate = estimateFlightHoursByDistance(originCode, destCode);
+    const candidates = [-1, 0, 1, 2].map(dayShift => {
+        const arrUtc = localDateTimeToUtcMs(dateStr, landingTime, destUtcOffset, dayShift);
+        if (arrUtc === null) return null;
+        const hours = (arrUtc - depUtc) / 36e5;
+        if (hours <= 0 || hours > 36) return null;
+        const score = distanceEstimate ? Math.abs(hours - distanceEstimate) : hours;
+        return { hours, score };
+    }).filter(Boolean).sort((a, b) => a.score - b.score);
+
+    if (!candidates.length) return null;
+    return parseFloat(candidates[0].hours.toFixed(1));
+}
+
 window.openAddModal = () => {
     editingFlightId = null;
 
     document.getElementById('flightForm').reset();
+    setDefaultTimezoneFields();
     document.getElementById('submitBtn').innerText = '儲存 Save';
     document.querySelector('#addFlightModal h2').innerText = '新增航班 Add Flight';
 
@@ -106,8 +171,9 @@ window.editFlight = (id) => {
     if(!f) return; 
     
     editingFlightId = f.id; 
-    const sVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+    const sVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val ?? ''; };
     sVal('inp-date', f.flight_date); sVal('inp-takeoff', f.takeoff_time); sVal('inp-landing', f.landing_time);
+    sVal('inp-origin-utc-offset', f.origin_utc_offset ?? DEFAULT_UTC_OFFSET); sVal('inp-dest-utc-offset', f.dest_utc_offset ?? DEFAULT_UTC_OFFSET);
     sVal('inp-origin', f.origin_code); sVal('inp-dest', f.dest_code); sVal('inp-airline', f.airline); sVal('inp-flight-number', f.flight_number); sVal('inp-type', f.aircraft_type);
         const quickInput = document.getElementById('inp-flight-quick');
 if (quickInput) {
@@ -136,25 +202,32 @@ window.submitFlight = async (e) => {
     if (!airportDB[originInput] || !airportDB[destInput]) return alert('找不到機場代碼');
     const btn = document.getElementById('submitBtn'); btn.innerText = '處理中...'; btn.disabled = true;
 
+    const dateStr = document.getElementById('inp-date').value;
     const takeoffTime = document.getElementById('inp-takeoff').value, landingTime = document.getElementById('inp-landing').value;
+    const originUtcOffset = normalizeUtcOffset(document.getElementById('inp-origin-utc-offset')?.value);
+    const destUtcOffset = normalizeUtcOffset(document.getElementById('inp-dest-utc-offset')?.value);
+
     let flightHours = null;
-    if (takeoffTime && landingTime) {
-        let [tH, tM] = takeoffTime.split(':').map(Number), [lH, lM] = landingTime.split(':').map(Number);
-        let tMins = tH * 60 + tM, lMins = lH * 60 + lM;
-        if (lMins <= tMins) lMins += 24 * 60; 
-        flightHours = parseFloat(((lMins - tMins) / 60).toFixed(1));
-    } else {
-        flightHours = parseFloat(((turf.distance(airportDB[originInput].coords, airportDB[destInput].coords, {units: 'kilometers'}) / 850) + 0.5).toFixed(1));
+    if (takeoffTime && landingTime && dateStr) {
+        flightHours = calculateFlightHoursWithUtcOffsets({
+            dateStr, takeoffTime, landingTime,
+            originUtcOffset, destUtcOffset,
+            originCode: originInput, destCode: destInput
+        });
     }
 
-    const payload = { flight_date: document.getElementById('inp-date').value || null, takeoff_time: takeoffTime || null, landing_time: landingTime || null, origin_code: originInput, dest_code: destInput, airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null, seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null, seat_type: document.getElementById('inp-seat-type').value || null, is_exit_row: document.getElementById('inp-exit-row').checked, aircraft_type: document.getElementById('inp-type').value || null, flight_hours: flightHours };
+    if (flightHours === null) {
+        flightHours = parseFloat((estimateFlightHoursByDistance(originInput, destInput)).toFixed(1));
+    }
+
+    const payload = { flight_date: dateStr || null, takeoff_time: takeoffTime || null, landing_time: landingTime || null, origin_code: originInput, dest_code: destInput, origin_utc_offset: originUtcOffset, dest_utc_offset: destUtcOffset, airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null, seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null, seat_type: document.getElementById('inp-seat-type').value || null, is_exit_row: document.getElementById('inp-exit-row').checked, aircraft_type: document.getElementById('inp-type').value || null, flight_hours: flightHours };
     await saveFlight(payload, editingFlightId); btn.disabled = false; btn.innerText = '儲存 Save'; toggleModal('addFlightModal'); fetchFlights();
 };
 
 window.exportCSV = exportCSV; window.importCSV = importCSV;
 function exportCSV() {
     if (!flightsState.length) return alert('尚無資料');
-    const headers = ['flight_date','origin_code','dest_code','airline','flight_number','aircraft_type','takeoff_time','landing_time','seat_class','seat_type','seat','is_exit_row'];
+    const headers = ['flight_date','origin_code','dest_code','origin_utc_offset','dest_utc_offset','airline','flight_number','aircraft_type','takeoff_time','landing_time','flight_hours','seat_class','seat_type','seat','is_exit_row'];
     const rows = flightsState.map(f => headers.map(h => `"${f[h]??''}"`).join(','));
     const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'flights.csv'; a.click();

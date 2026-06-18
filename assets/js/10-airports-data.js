@@ -53,14 +53,35 @@ async function fetchFlights() {
     if (!error) setFlights(data);
 }
 
+function removeOptionalTimezoneColumns(payload) {
+    const cleanPayload = { ...payload };
+    delete cleanPayload.origin_utc_offset;
+    delete cleanPayload.dest_utc_offset;
+    return cleanPayload;
+}
+
+function isMissingOptionalTimezoneColumnError(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('origin_utc_offset') ||
+        message.includes('dest_utc_offset') ||
+        (message.includes('column') && message.includes('schema cache'));
+}
+
+async function upsertFlightPayload(payload, id = null) {
+    if (id) return await supabaseClient.from('flights').update(payload).eq('id', id);
+    return await supabaseClient.from('flights').insert([payload]);
+}
+
 async function saveFlight(payload, id = null) {
     try {
-        let result;
-        if (id) {
-            result = await supabaseClient.from('flights').update(payload).eq('id', id);
-        } else {
-            result = await supabaseClient.from('flights').insert([payload]);
+        let result = await upsertFlightPayload(payload, id);
+
+        // Backward compatible fallback: if Supabase has not added the two optional timezone columns yet,
+        // still save the corrected flight_hours and the rest of the flight record.
+        if (result.error && isMissingOptionalTimezoneColumnError(result.error)) {
+            result = await upsertFlightPayload(removeOptionalTimezoneColumns(payload), id);
         }
+
         if (result.error) throw result.error;
         return true;
     } catch (error) {
