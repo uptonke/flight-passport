@@ -1,0 +1,36 @@
+name: Disaster Recovery & Off-site Backup 🛡️
+
+on:
+  schedule:
+    - cron: "0 16 * * 5" # 台灣時間每週五午夜
+  workflow_dispatch: # 保留手動觸發按鈕
+
+jobs:
+  run-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 檢出程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 確保能 Push 回去
+
+      - name: 設定 Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 安裝套件
+        run: pip install requests
+
+      - name: 執行備份腳本
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: python backup_engine.py
+
+      - name: 提交並推送到 GitHub
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add backups/
+          git commit -m "🍱 Auto Backup: $(date +'%Y-%m-%d %H:%M:%S')" || echo "資料無變動，跳過提交。"
+          git push
