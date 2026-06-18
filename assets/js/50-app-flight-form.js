@@ -112,12 +112,12 @@ function parseTimeParts(timeStr) {
     return { h: parts[0], min: parts[1] };
 }
 
-function localDateTimeToUtcMs(dateStr, timeStr, utcOffset, dayShift = 0) {
+function localDateTimeToUtcMs(dateStr, timeStr, utcOffset) {
     const date = parseDateParts(dateStr);
     const time = parseTimeParts(timeStr);
     if (!date || !time) return null;
     const offset = normalizeUtcOffset(utcOffset);
-    return Date.UTC(date.y, date.m - 1, date.d + dayShift, time.h, time.min) - offset * 60 * 60 * 1000;
+    return Date.UTC(date.y, date.m - 1, date.d, time.h, time.min) - offset * 60 * 60 * 1000;
 }
 
 function estimateFlightHoursByDistance(originCode, destCode) {
@@ -125,24 +125,29 @@ function estimateFlightHoursByDistance(originCode, destCode) {
     return (turf.distance(airportDB[originCode].coords, airportDB[destCode].coords, { units: 'kilometers' }) / 850) + 0.5;
 }
 
-function calculateFlightHoursWithUtcOffsets({ dateStr, takeoffTime, landingTime, originUtcOffset, destUtcOffset, originCode, destCode }) {
-    if (!dateStr || !takeoffTime || !landingTime) return null;
+function calculateFlightHoursWithUtcOffsets({ departureDate, arrivalDate, takeoffTime, landingTime, originUtcOffset, destUtcOffset }) {
+    if (!departureDate || !arrivalDate || !takeoffTime || !landingTime) return null;
 
-    const depUtc = localDateTimeToUtcMs(dateStr, takeoffTime, originUtcOffset, 0);
-    if (depUtc === null) return null;
+    const depUtc = localDateTimeToUtcMs(departureDate, takeoffTime, originUtcOffset);
+    const arrUtc = localDateTimeToUtcMs(arrivalDate, landingTime, destUtcOffset);
+    if (depUtc === null || arrUtc === null) return null;
 
-    const distanceEstimate = estimateFlightHoursByDistance(originCode, destCode);
-    const candidates = [-1, 0, 1, 2].map(dayShift => {
-        const arrUtc = localDateTimeToUtcMs(dateStr, landingTime, destUtcOffset, dayShift);
-        if (arrUtc === null) return null;
-        const hours = (arrUtc - depUtc) / 36e5;
-        if (hours <= 0 || hours > 36) return null;
-        const score = distanceEstimate ? Math.abs(hours - distanceEstimate) : hours;
-        return { hours, score };
-    }).filter(Boolean).sort((a, b) => a.score - b.score);
+    const hours = (arrUtc - depUtc) / 36e5;
+    if (hours <= 0 || hours > 48) return null;
+    return parseFloat(hours.toFixed(1));
+}
 
-    if (!candidates.length) return null;
-    return parseFloat(candidates[0].hours.toFixed(1));
+function setupArrivalDateSync() {
+    const depDate = document.getElementById('inp-date');
+    const arrDate = document.getElementById('inp-arrival-date');
+    if (!depDate || !arrDate || arrDate.dataset.syncReady === '1') return;
+
+    arrDate.dataset.userEdited = '0';
+    arrDate.addEventListener('input', () => { arrDate.dataset.userEdited = '1'; });
+    depDate.addEventListener('input', () => {
+        if (!arrDate.value || arrDate.dataset.userEdited !== '1') arrDate.value = depDate.value;
+    });
+    arrDate.dataset.syncReady = '1';
 }
 
 window.openAddModal = () => {
@@ -150,6 +155,12 @@ window.openAddModal = () => {
 
     document.getElementById('flightForm').reset();
     setDefaultTimezoneFields();
+    setupArrivalDateSync();
+    const arrivalDateEl = document.getElementById('inp-arrival-date');
+    if (arrivalDateEl) {
+        arrivalDateEl.dataset.userEdited = '0';
+        arrivalDateEl.value = document.getElementById('inp-date')?.value || '';
+    }
     document.getElementById('submitBtn').innerText = '儲存 Save';
     document.querySelector('#addFlightModal h2').innerText = '新增航班 Add Flight';
 
@@ -172,7 +183,10 @@ window.editFlight = (id) => {
     
     editingFlightId = f.id; 
     const sVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val ?? ''; };
-    sVal('inp-date', f.flight_date); sVal('inp-takeoff', f.takeoff_time); sVal('inp-landing', f.landing_time);
+    setupArrivalDateSync();
+    sVal('inp-date', f.flight_date); sVal('inp-arrival-date', f.arrival_date ?? f.flight_date); sVal('inp-takeoff', f.takeoff_time); sVal('inp-landing', f.landing_time);
+    const arrivalDateEl = document.getElementById('inp-arrival-date');
+    if (arrivalDateEl) arrivalDateEl.dataset.userEdited = f.arrival_date ? '1' : '0';
     sVal('inp-origin-utc-offset', f.origin_utc_offset ?? DEFAULT_UTC_OFFSET); sVal('inp-dest-utc-offset', f.dest_utc_offset ?? DEFAULT_UTC_OFFSET);
     sVal('inp-origin', f.origin_code); sVal('inp-dest', f.dest_code); sVal('inp-airline', f.airline); sVal('inp-flight-number', f.flight_number); sVal('inp-type', f.aircraft_type);
         const quickInput = document.getElementById('inp-flight-quick');
@@ -203,31 +217,42 @@ window.submitFlight = async (e) => {
     const btn = document.getElementById('submitBtn'); btn.innerText = '處理中...'; btn.disabled = true;
 
     const dateStr = document.getElementById('inp-date').value;
+    const arrivalDateStr = document.getElementById('inp-arrival-date')?.value || dateStr;
     const takeoffTime = document.getElementById('inp-takeoff').value, landingTime = document.getElementById('inp-landing').value;
     const originUtcOffset = normalizeUtcOffset(document.getElementById('inp-origin-utc-offset')?.value);
     const destUtcOffset = normalizeUtcOffset(document.getElementById('inp-dest-utc-offset')?.value);
 
     let flightHours = null;
-    if (takeoffTime && landingTime && dateStr) {
+    const hasCompleteTimeInput = Boolean(dateStr && arrivalDateStr && takeoffTime && landingTime);
+    if (hasCompleteTimeInput) {
         flightHours = calculateFlightHoursWithUtcOffsets({
-            dateStr, takeoffTime, landingTime,
-            originUtcOffset, destUtcOffset,
-            originCode: originInput, destCode: destInput
+            departureDate: dateStr,
+            arrivalDate: arrivalDateStr,
+            takeoffTime,
+            landingTime,
+            originUtcOffset,
+            destUtcOffset
         });
+        if (flightHours === null) {
+            btn.disabled = false;
+            btn.innerText = editingFlightId ? '更新 Update' : '儲存 Save';
+            return alert('起降日期、時間或時區算出的飛行時間不合理，請檢查 Arrival Date 與 UTC offset。');
+        }
     }
 
     if (flightHours === null) {
-        flightHours = parseFloat((estimateFlightHoursByDistance(originInput, destInput)).toFixed(1));
+        const estimatedHours = estimateFlightHoursByDistance(originInput, destInput);
+        flightHours = estimatedHours ? parseFloat(estimatedHours.toFixed(1)) : null;
     }
 
-    const payload = { flight_date: dateStr || null, takeoff_time: takeoffTime || null, landing_time: landingTime || null, origin_code: originInput, dest_code: destInput, origin_utc_offset: originUtcOffset, dest_utc_offset: destUtcOffset, airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null, seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null, seat_type: document.getElementById('inp-seat-type').value || null, is_exit_row: document.getElementById('inp-exit-row').checked, aircraft_type: document.getElementById('inp-type').value || null, flight_hours: flightHours };
+    const payload = { flight_date: dateStr || null, arrival_date: arrivalDateStr || null, takeoff_time: takeoffTime || null, landing_time: landingTime || null, origin_code: originInput, dest_code: destInput, origin_utc_offset: originUtcOffset, dest_utc_offset: destUtcOffset, airline: document.getElementById('inp-airline').value || null, flight_number: document.getElementById('inp-flight-number').value || null, seat: document.getElementById('inp-seat').value.toUpperCase() || null, seat_class: document.getElementById('inp-seat-class').value || null, seat_type: document.getElementById('inp-seat-type').value || null, is_exit_row: document.getElementById('inp-exit-row').checked, aircraft_type: document.getElementById('inp-type').value || null, flight_hours: flightHours };
     await saveFlight(payload, editingFlightId); btn.disabled = false; btn.innerText = '儲存 Save'; toggleModal('addFlightModal'); fetchFlights();
 };
 
 window.exportCSV = exportCSV; window.importCSV = importCSV;
 function exportCSV() {
     if (!flightsState.length) return alert('尚無資料');
-    const headers = ['flight_date','origin_code','dest_code','origin_utc_offset','dest_utc_offset','airline','flight_number','aircraft_type','takeoff_time','landing_time','flight_hours','seat_class','seat_type','seat','is_exit_row'];
+    const headers = ['flight_date','arrival_date','origin_code','dest_code','origin_utc_offset','dest_utc_offset','airline','flight_number','aircraft_type','takeoff_time','landing_time','flight_hours','seat_class','seat_type','seat','is_exit_row'];
     const rows = flightsState.map(f => headers.map(h => `"${f[h]??''}"`).join(','));
     const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'flights.csv'; a.click();

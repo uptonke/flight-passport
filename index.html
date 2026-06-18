@@ -291,9 +291,15 @@
         </div>
 
         <div class="space-y-4">
-            <div>
-                <label for="inp-date" class="block text-xs text-gray-400 mb-1">日期 Date</label>
-                <input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                <div>
+                    <label for="inp-date" class="block text-xs text-gray-400 mb-1">起飛日期 Departure Date</label>
+                    <input type="date" id="inp-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label for="inp-arrival-date" class="block text-xs text-gray-400 mb-1">抵達日期 Arrival Date</label>
+                    <input type="date" id="inp-arrival-date" required class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3 md:gap-4">
@@ -317,7 +323,7 @@
                     <input type="number" id="inp-dest-utc-offset" value="8" min="-12" max="14" step="0.25" class="w-full bg-[#1e1e20] border border-white/10 rounded-lg px-3 py-2 text-white" placeholder="例如：+1 / +2 / -8">
                 </div>
             </div>
-            <div class="text-[10px] text-gray-500 -mt-2">預設台北 UTC+8；巴塞隆納冬令 UTC+1、夏令 UTC+2；洛杉磯冬令 UTC-8、夏令 UTC-7。</div>
+            <div class="text-[10px] text-gray-500 -mt-2">預設台北 UTC+8；Arrival Date 會與 Departure Date 預設同步，跨日航班再手動調整。</div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 <div>
