@@ -2,7 +2,7 @@ function renderChartsAndLists(stats) {
     const renderList = (data, id, colorCls, isLogo=false) => {
         const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]); const max = sorted.length ? sorted[0][1] : 1;
         const el = document.getElementById(id); if(!el) return 0;
-        el.innerHTML = sorted.slice(0, 10).map(i => {
+        el.innerHTML = sorted.map(i => {
             let name = i[0]; if(isLogo && airlineDB[name]) name = `${name} ${airlineDB[name]}`; else if(!isLogo && airportDB[name]) name = `${name} ${airportDB[name].city}`;
             const lg = isLogo && getAirlineLogoUrl(i[0]) ? `<img src="${getAirlineLogoUrl(i[0])}" class="w-6 h-6 rounded-full bg-white/5 p-1 mr-3 shrink-0">` : '';
             return `<div class="flex items-center text-sm">${lg}<div class="w-32 sm:w-48 font-bold truncate pr-2">${name}</div><div class="flex-1 min-w-0"><div class="${colorCls} h-6 rounded-r-md flex items-center px-2 text-xs font-bold" style="width:${(i[1]/max)*100}%">${i[1]}</div></div></div>`;

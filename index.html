@@ -328,11 +328,19 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 <div>
                     <label for="inp-origin" class="block text-xs text-gray-400 mb-1">出發地 Origin</label>
-                    <input type="text" id="inp-origin" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3">
+                    <div class="relative">
+                        <input type="text" id="inp-origin" list="iata-list" required autocomplete="off" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase pr-10" maxlength="3" placeholder="輸入或選擇 IATA">
+                        <button type="button" class="airport-menu-toggle absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-400 text-sm" data-target-input="inp-origin" data-target-menu="origin-airport-menu" aria-label="選擇出發地機場">▾</button>
+                        <div id="origin-airport-menu" class="airport-menu hidden absolute z-[9999] mt-1 w-full max-h-64 overflow-y-auto bg-[#1e1e20] border border-white/20 rounded-xl shadow-2xl"></div>
+                    </div>
                 </div>
                 <div>
                     <label for="inp-dest" class="block text-xs text-gray-400 mb-1">目的地 Dest</label>
-                    <input type="text" id="inp-dest" list="iata-list" required class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase" maxlength="3">
+                    <div class="relative">
+                        <input type="text" id="inp-dest" list="iata-list" required autocomplete="off" class="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 uppercase pr-10" maxlength="3" placeholder="輸入或選擇 IATA">
+                        <button type="button" class="airport-menu-toggle absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-400 text-sm" data-target-input="inp-dest" data-target-menu="dest-airport-menu" aria-label="選擇目的地機場">▾</button>
+                        <div id="dest-airport-menu" class="airport-menu hidden absolute z-[9999] mt-1 w-full max-h-64 overflow-y-auto bg-[#1e1e20] border border-white/20 rounded-xl shadow-2xl"></div>
+                    </div>
                 </div>
             </div>
         </div>

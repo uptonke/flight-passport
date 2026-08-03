@@ -42,10 +42,124 @@ async function loadGlobalAirports() {
     } catch (e) { console.error(e); }
 }
 
+function getAirportSearchItems() {
+    return Object.keys(airportDB)
+        .sort()
+        .map(code => ({ code, ...airportDB[code] }));
+}
+
 function renderAirportOptions() {
+    const datalist = document.getElementById('iata-list');
+    if (!datalist) return;
+
     let options = '';
-    for (let code in airportDB) options += `<option value="${code}">${airportDB[code].name} (${airportDB[code].city})</option>`;
-    document.getElementById('iata-list').innerHTML = options;
+    for (let code in airportDB) {
+        const airport = airportDB[code];
+        options += `<option value="${code}">${airport.name || ''} (${airport.city || ''})</option>`;
+    }
+    datalist.innerHTML = options;
+    setupAirportMenus();
+}
+
+function filterAirportItems(query, limit = 30) {
+    const q = (query || '').trim().toUpperCase();
+    const items = getAirportSearchItems();
+
+    if (!q) {
+        const preferredCodes = ['TPE', 'TSA', 'HND', 'NRT', 'KIX', 'ICN', 'HKG', 'BKK', 'SIN', 'KUL', 'BCN', 'ORY', 'CDG', 'FCO', 'DXB', 'LAX', 'JFK'];
+        const preferred = preferredCodes.filter(code => airportDB[code]).map(code => ({ code, ...airportDB[code] }));
+        return preferred.slice(0, limit);
+    }
+
+    return items
+        .filter(a => {
+            const haystack = `${a.code} ${a.name || ''} ${a.city || ''} ${a.country || ''}`.toUpperCase();
+            return haystack.includes(q);
+        })
+        .sort((a, b) => {
+            const aCode = a.code.startsWith(q) ? 0 : 1;
+            const bCode = b.code.startsWith(q) ? 0 : 1;
+            if (aCode !== bCode) return aCode - bCode;
+            return a.code.localeCompare(b.code);
+        })
+        .slice(0, limit);
+}
+
+function showAirportMenu(inputId, menuId) {
+    const input = document.getElementById(inputId);
+    const menu = document.getElementById(menuId);
+    if (!input || !menu) return;
+
+    const items = filterAirportItems(input.value);
+    if (!items.length) {
+        menu.innerHTML = '<div class="px-3 py-2 text-xs text-gray-500">找不到機場代碼</div>';
+    } else {
+        menu.innerHTML = items.map(a => `
+            <button type="button" class="airport-menu-item w-full text-left px-3 py-2 hover:bg-sky-500/20 border-b border-white/5 last:border-b-0" data-code="${a.code}">
+                <div class="text-sm font-black tracking-widest text-white">${a.code}</div>
+                <div class="text-[11px] text-gray-400 truncate">${a.name || ''}${a.city ? ' · ' + a.city : ''}${a.country ? ' · ' + a.country : ''}</div>
+            </button>
+        `).join('');
+    }
+
+    document.querySelectorAll('.airport-menu').forEach(el => {
+        if (el.id !== menuId) el.classList.add('hidden');
+    });
+    menu.classList.remove('hidden');
+}
+
+function hideAirportMenus() {
+    document.querySelectorAll('.airport-menu').forEach(el => el.classList.add('hidden'));
+}
+
+function bindAirportMenu(inputId, menuId) {
+    const input = document.getElementById(inputId);
+    const menu = document.getElementById(menuId);
+    if (!input || !menu || input.dataset.airportMenuBound === '1') return;
+
+    input.dataset.airportMenuBound = '1';
+
+    input.addEventListener('focus', () => showAirportMenu(inputId, menuId));
+    input.addEventListener('input', () => {
+        input.value = input.value.toUpperCase();
+        showAirportMenu(inputId, menuId);
+    });
+
+    menu.addEventListener('pointerdown', (event) => {
+        const item = event.target.closest('.airport-menu-item');
+        if (!item) return;
+        event.preventDefault();
+        input.value = item.dataset.code;
+        hideAirportMenus();
+    });
+}
+
+function setupAirportMenus() {
+    bindAirportMenu('inp-origin', 'origin-airport-menu');
+    bindAirportMenu('inp-dest', 'dest-airport-menu');
+
+    document.querySelectorAll('.airport-menu-toggle').forEach(btn => {
+        if (btn.dataset.airportMenuToggleBound === '1') return;
+        btn.dataset.airportMenuToggleBound = '1';
+        btn.addEventListener('click', (event) => {
+            event.preventDefault();
+            const inputId = btn.dataset.targetInput;
+            const menuId = btn.dataset.targetMenu;
+            const menu = document.getElementById(menuId);
+            if (!menu) return;
+            if (menu.classList.contains('hidden')) showAirportMenu(inputId, menuId);
+            else hideAirportMenus();
+            document.getElementById(inputId)?.focus();
+        });
+    });
+
+    if (!document.body.dataset.airportMenuOutsideBound) {
+        document.body.dataset.airportMenuOutsideBound = '1';
+        document.addEventListener('pointerdown', (event) => {
+            if (event.target.closest('.airport-menu') || event.target.closest('.airport-menu-toggle') || event.target.closest('#inp-origin') || event.target.closest('#inp-dest')) return;
+            hideAirportMenus();
+        });
+    }
 }
 
 async function fetchFlights() {
