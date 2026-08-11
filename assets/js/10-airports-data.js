@@ -1,8 +1,36 @@
+const manualAirportOverrides = { 'TPE': { city: '桃園 Taipei' }, 'TSA': { city: '松山 Taipei' }, 
+    'HND': { city: '東京羽田 Tokyo' }, 'NRT': { city: '東京成田 Tokyo' }, 'KIX': { city: '大阪 Osaka' },
+    'OKA': { city: '沖繩 Okinawa' }, 'CTS': { city: '札幌 Sapporo' }, 'KMJ': { city: '熊本 Kumamoto' }, 'FUK': { city: '福岡 Fukuoka' },
+    'PEK': { city: '北京首都 Beijing' }, 'PVG': { city: '上海浦東 Shanghai' }, 'SHA': { city: '上海虹橋 Shanghai' },
+    'HGH': { city: '杭州 Hangzhou' },
+    'TFU': { coords: [104.441284, 30.31252], name: 'Chengdu Tianfu International Airport', city: '成都天府 Chengdu', country: 'China' },
+    'CTU': { city: '成都雙流 Chengdu' }, 'XIY': { city: '西安 Xi an' },
+    'SZX': { coords: [113.8115, 22.6393], city: '深圳 Shenzhen' }, 'LJG': { coords: [100.2464, 26.6714], city: '麗江 Lijiang' },
+    'SIN': { city: '新加坡 Singapore' }, 'HKT': { city: '普吉島 Phuket' }, 'PEN': { city: '檳城 Penang' },
+    'BKK': { city: '曼谷 Bangkok' }, 'DMK': { city: '曼谷廊曼 Bangkok' }, 'KUL': { city: '吉隆坡 Kuala Lumpur' },
+    'CGK': { city: '雅加達 Jakarta' }, 'MNL': { city: '馬尼拉 Manila' }, 'HKG': { city: '香港 Hong Kong' },
+    'MFM': { city: '澳門 Macau' }, 'ICN': { city: '首爾 Seoul' }, 'GMP': { city: '首爾 Seoul' },
+    'LGW': { city: '倫敦 London' }, 'FCO': { city: '羅馬 Rome' }, 'BCN': { city: '巴塞羅那 Barcelona' },
+    'IST': { city: '伊斯坦堡 Istanbul' }, 'CAI': { city: '開羅 Cairo' }, 'DXB': { city: '杜拜 Dubai' },
+    'AUH': { city: '阿布達比 Abu Dhabi' }, 'ABU': { city: '阿布達比 Abu Dhabi' }, 'DOH': { city: '杜哈 Doha' },
+    'JFK': { city: '紐約 New York' }, 'LAX': { city: '洛杉磯 Los Angeles' }, 'LAS': { city: '拉斯維加斯 Las Vegas' },
+    'IAD': { city: '華盛頓 Washington' }, 'SFO': { city: '舊金山 San Francisco' }, 'DEL': { city: '新德里 New Delhi' },
+    'CMB': { city: '科倫坡 Colombo'}
+};
+
+function applyManualAirportOverrides() {
+    Object.keys(manualAirportOverrides).forEach(code => {
+        airportDB[code] = { ...(airportDB[code] || {}), ...manualAirportOverrides[code] };
+    });
+}
+
 async function loadGlobalAirports() {
     const cachedDB = localStorage.getItem('airportDB_cache_v1');
     if (cachedDB) {
         try {
             airportDB = JSON.parse(cachedDB);
+            applyManualAirportOverrides();
+            localStorage.setItem('airportDB_cache_v1', JSON.stringify(airportDB));
             renderAirportOptions(); 
             return;
         } catch (e) {
@@ -14,32 +42,20 @@ async function loadGlobalAirports() {
     try {
         const res = await fetch('https://gist.githubusercontent.com/tdreyno/4278655/raw/7b0762c09b519f40397e4c3e100b097d861f5588/airports.json');
         const data = await res.json();
-        const manualOverrides = { 'TPE': { city: '桃園 Taipei' }, 'TSA': { city: '松山 Taipei' }, 
-            'HND': { city: '東京羽田 Tokyo' }, 'NRT': { city: '東京成田 Tokyo' }, 'KIX': { city: '大阪 Osaka' },
-            'OKA': { city: '沖繩 Okinawa' }, 'CTS': { city: '札幌 Sapporo' }, 'KMJ': { city: '熊本 Kumamoto' }, 'FUK': { city: '福岡 Fukuoka' },
-            'PEK': { city: '北京首都 Beijing' }, 'PVG': { city: '上海浦東 Shanghai' }, 'SHA': { city: '上海虹橋 Shanghai' },
-            'HGH': { city: '杭州 Hangzhou' }, 'TFU': { city: '成都天府 Chengdu' }, 'XIY': { city: '西安 Xi an' },
-            'SZX': { coords: [113.8115, 22.6393], city: '深圳 Shenzhen' }, 'LJG': { coords: [100.2464, 26.6714], city: '麗江 Lijiang' },
-            'SIN': { city: '新加坡 Singapore' }, 'HKT': { city: '普吉島 Phuket' }, 'PEN': { city: '檳城 Penang' },
-            'BKK': { city: '曼谷 Bangkok' }, 'DMK': { city: '曼谷廊曼 Bangkok' }, 'KUL': { city: '吉隆坡 Kuala Lumpur' },
-            'CGK': { city: '雅加達 Jakarta' }, 'MNL': { city: '馬尼拉 Manila' }, 'HKG': { city: '香港 Hong Kong' },
-            'MFM': { city: '澳門 Macau' }, 'ICN': { city: '首爾 Seoul' }, 'GMP': { city: '首爾 Seoul' },
-            'LGW': { city: '倫敦 London' }, 'FCO': { city: '羅馬 Rome' }, 'BCN': { city: '巴塞羅那 Barcelona' },
-            'IST': { city: '伊斯坦堡 Istanbul' }, 'CAI': { city: '開羅 Cairo' }, 'DXB': { city: '杜拜 Dubai' },
-            'ABU': { city: '阿布達比 Abu Dhabi' }, 'DOH': { city: '杜哈 Doha' },
-            'JFK': { city: '紐約 New York' }, 'LAX': { city: '洛杉磯 Los Angeles' }, 'LAS': { city: '拉斯維加斯 Las Vegas' },
-            'IAD': { city: '華盛頓 Washington' }, 'SFO': { city: '舊金山 San Francisco' }, 'DEL': { city: '新德里 New Delhi' },
-            'CMB': { city: '科倫坡 Colombo'}
-        };
         data.forEach(a => { 
             if (a.code) {
                 let code = a.code.toUpperCase();
-                airportDB[code] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country, ...manualOverrides[code] };
+                airportDB[code] = { coords: [parseFloat(a.lon), parseFloat(a.lat)], name: a.name, city: a.city, country: a.country };
             }
         });
+        applyManualAirportOverrides();
         localStorage.setItem('airportDB_cache_v1', JSON.stringify(airportDB));
         renderAirportOptions();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+        applyManualAirportOverrides();
+        renderAirportOptions();
+    }
 }
 
 function getAirportSearchItems() {
