@@ -11,6 +11,8 @@ const manualAirportOverrides = { 'TPE': { city: '桃園 Taipei' }, 'TSA': { city
     'CGK': { city: '雅加達 Jakarta' }, 'MNL': { city: '馬尼拉 Manila' }, 'HKG': { city: '香港 Hong Kong' },
     'MFM': { city: '澳門 Macau' }, 'ICN': { city: '首爾 Seoul' }, 'GMP': { city: '首爾 Seoul' },
     'LGW': { city: '倫敦 London' }, 'FCO': { city: '羅馬 Rome' }, 'BCN': { city: '巴塞羅那 Barcelona' },
+    'LIS': { city: '里斯本 Lisbon' }, 'PRG': { city: '布拉格 Prague' }, 'ORY': { city: '巴黎 Paris' },
+    'CDG': { city: '巴黎 Paris' }, 'SVQ': { city: '塞維利亞 Seville' },
     'IST': { city: '伊斯坦堡 Istanbul' }, 'CAI': { city: '開羅 Cairo' }, 'DXB': { city: '杜拜 Dubai' },
     'AUH': { city: '阿布達比 Abu Dhabi' }, 'ABU': { city: '阿布達比 Abu Dhabi' }, 'DOH': { city: '杜哈 Doha' },
     'JFK': { city: '紐約 New York' }, 'LAX': { city: '洛杉磯 Los Angeles' }, 'LAS': { city: '拉斯維加斯 Las Vegas' },
