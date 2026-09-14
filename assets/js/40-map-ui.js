@@ -42,6 +42,9 @@ window.toggleNightMode = function() {
     if (map.getLayer('nasa-black-marble-layer')) {
         map.setLayoutProperty('nasa-black-marble-layer', 'visibility', isNightMode ? 'visible' : 'none');
     }
+    if (typeof map.setConfigProperty === 'function') {
+        map.setConfigProperty('basemap', 'lightPreset', isNightMode ? 'night' : 'day');
+    }
     const btn = document.getElementById('btn-night-toggle');
     if (btn) btn.innerText = isNightMode ? '切換衛星地貌' : '切換夜景燈光';
 };
@@ -146,7 +149,7 @@ function resetRouteAnimationMode() {
 
 const map = new mapboxgl.Map({ 
     container: 'map', 
-    style: 'mapbox://styles/mapbox/satellite-streets-v12', 
+    style: 'mapbox://styles/mapbox/standard-satellite', 
     center: [111.0, 25.0], 
     zoom: 3.5, 
     pitch: 45, 
@@ -160,12 +163,9 @@ map.on('dragstart', () => {
     }
 });
 map.on('style.load', () => {
-    map.setLight({
-        anchor: 'viewport',
-        color: '#ffffff',
-        intensity: 0.35,
-        position: [1.15, 210, 30] // 模擬特定角度的太陽光源
-    });
+    if (typeof map.setConfigProperty === 'function') {
+        map.setConfigProperty('basemap', 'lightPreset', isNightMode ? 'night' : 'day');
+    }
 
     if (!map.getSource('nasa-black-marble')) {
         map.addSource('nasa-black-marble', {
