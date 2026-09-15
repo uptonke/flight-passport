@@ -178,7 +178,14 @@ map.on('style.load', () => {
             'id': 'nasa-black-marble-layer',
             'type': 'raster',
             'source': 'nasa-black-marble',
-            'paint': { 'raster-opacity': 1.0, 'raster-contrast': 0.1 },
+            'paint': {
+                'raster-opacity': 0.72,
+                'raster-contrast': 0.55,
+                'raster-saturation': 0.15,
+                'raster-brightness-min': 0,
+                'raster-brightness-max': 1,
+                'raster-emissive-strength': 1.25
+            },
             'layout': { 'visibility': 'none' }
         });
     }
