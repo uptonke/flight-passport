@@ -145,7 +145,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     'line-opacity': style.shadowOpacity,
                     'line-blur': 0.7,
                     'line-emissive-strength': 0
-                }), beforeId || layer.id);
+                }), beforeId || undefined);
             }
 
             const haloId = `${layer.id}-halo`;
@@ -156,7 +156,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     'line-opacity': style.haloOpacity,
                     'line-blur': 1.0,
                     'line-emissive-strength': 1.0
-                }), beforeId || layer.id);
+                }), beforeId || undefined);
             }
         };
 
