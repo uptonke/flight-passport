@@ -101,3 +101,138 @@ if (seatEntries.length > 0) {
     document.getElementById('stat-exit-row').innerText = stats.seatStats.exitRows;
 }
     }
+
+// Route visibility enhancer for bright satellite/night imagery.
+window.addEventListener('DOMContentLoaded', () => {
+    const installRouteVisibilityEnhancer = () => {
+        if (typeof map === 'undefined' || !map || typeof map.addLayer !== 'function') {
+            setTimeout(installRouteVisibilityEnhancer, 50);
+            return;
+        }
+        if (map.__routeVisibilityEnhanced) return;
+        map.__routeVisibilityEnhanced = true;
+
+        const originalAddLayer = map.addLayer.bind(map);
+        const routeMainPattern = /^r-\d+-line$/;
+
+        const normalStyle = () => {
+            const night = typeof isNightMode !== 'undefined' && isNightMode;
+            return night
+                ? { main: 4.2, shadow: 10, halo: 7.2, shadowOpacity: 0.55, haloOpacity: 0.30, emissive: 1.8 }
+                : { main: 3.4, shadow: 7, halo: 5.4, shadowOpacity: 0.28, haloOpacity: 0.16, emissive: 0.8 };
+        };
+
+        const makeUnderlay = (layer, suffix, paint) => ({
+            id: `${layer.id}-${suffix}`,
+            type: 'line',
+            source: layer.source,
+            ...(layer['source-layer'] ? { 'source-layer': layer['source-layer'] } : {}),
+            ...(layer.minzoom !== undefined ? { minzoom: layer.minzoom } : {}),
+            ...(layer.maxzoom !== undefined ? { maxzoom: layer.maxzoom } : {}),
+            layout: { ...(layer.layout || {}), 'line-join': 'round', 'line-cap': 'round' },
+            paint
+        });
+
+        const addUnderlaysForLayer = (layer, beforeId = null) => {
+            if (!layer || !routeMainPattern.test(layer.id)) return;
+            const style = normalStyle();
+
+            const shadowId = `${layer.id}-shadow`;
+            if (!map.getLayer(shadowId)) {
+                originalAddLayer(makeUnderlay(layer, 'shadow', {
+                    'line-color': '#000000',
+                    'line-width': style.shadow,
+                    'line-opacity': style.shadowOpacity,
+                    'line-blur': 0.7,
+                    'line-emissive-strength': 0
+                }), beforeId || layer.id);
+            }
+
+            const haloId = `${layer.id}-halo`;
+            if (!map.getLayer(haloId)) {
+                originalAddLayer(makeUnderlay(layer, 'halo', {
+                    'line-color': '#ffffff',
+                    'line-width': style.halo,
+                    'line-opacity': style.haloOpacity,
+                    'line-blur': 1.0,
+                    'line-emissive-strength': 1.0
+                }), beforeId || layer.id);
+            }
+        };
+
+        const applyRouteVisibility = (focusedRouteId = null) => {
+            const style = map.getStyle();
+            if (!style || !style.layers) return;
+            const base = normalStyle();
+
+            style.layers.forEach(layer => {
+                if (!routeMainPattern.test(layer.id)) return;
+                const isFocused = focusedRouteId && layer.id === `${focusedRouteId}-line`;
+                const mainWidth = isFocused ? Math.max(base.main + 3.8, 8) : base.main;
+                const shadowWidth = isFocused ? base.shadow + 6 : base.shadow;
+                const haloWidth = isFocused ? base.halo + 5 : base.halo;
+
+                if (map.getLayer(layer.id)) {
+                    map.setPaintProperty(layer.id, 'line-width', mainWidth);
+                    map.setPaintProperty(layer.id, 'line-opacity', 0.98);
+                    map.setPaintProperty(layer.id, 'line-emissive-strength', isFocused ? base.emissive + 0.8 : base.emissive);
+                }
+                if (map.getLayer(`${layer.id}-shadow`)) {
+                    map.setPaintProperty(`${layer.id}-shadow`, 'line-width', shadowWidth);
+                    map.setPaintProperty(`${layer.id}-shadow`, 'line-opacity', isFocused ? Math.min(base.shadowOpacity + 0.12, 0.75) : base.shadowOpacity);
+                }
+                if (map.getLayer(`${layer.id}-halo`)) {
+                    map.setPaintProperty(`${layer.id}-halo`, 'line-width', haloWidth);
+                    map.setPaintProperty(`${layer.id}-halo`, 'line-opacity', isFocused ? Math.min(base.haloOpacity + 0.18, 0.55) : base.haloOpacity);
+                }
+            });
+        };
+
+        map.addLayer = function(layer, beforeId) {
+            if (layer && routeMainPattern.test(layer.id)) {
+                addUnderlaysForLayer(layer, beforeId || null);
+                const style = normalStyle();
+                layer = {
+                    ...layer,
+                    paint: {
+                        ...(layer.paint || {}),
+                        'line-width': style.main,
+                        'line-opacity': 0.98,
+                        'line-emissive-strength': style.emissive
+                    }
+                };
+            }
+            return originalAddLayer(layer, beforeId);
+        };
+
+        const enhanceExistingRoutes = () => {
+            const style = map.getStyle();
+            if (!style || !style.layers) return;
+            const mains = style.layers.filter(layer => routeMainPattern.test(layer.id));
+            mains.forEach(layer => addUnderlaysForLayer(layer, layer.id));
+            applyRouteVisibility();
+        };
+
+        const originalToggleNightMode = window.toggleNightMode;
+        if (typeof originalToggleNightMode === 'function') {
+            window.toggleNightMode = function(...args) {
+                const result = originalToggleNightMode.apply(this, args);
+                requestAnimationFrame(() => applyRouteVisibility());
+                return result;
+            };
+        }
+
+        const originalFocusFlightRoute = window.focusFlightRoute;
+        if (typeof originalFocusFlightRoute === 'function') {
+            window.focusFlightRoute = function(routeId, origin, dest) {
+                const result = originalFocusFlightRoute(routeId, origin, dest);
+                requestAnimationFrame(() => applyRouteVisibility(routeId));
+                return result;
+            };
+        }
+
+        enhanceExistingRoutes();
+    };
+
+    installRouteVisibilityEnhancer();
+});
