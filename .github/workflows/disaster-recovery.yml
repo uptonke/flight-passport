@@ -5,9 +5,12 @@ on:
     - cron: "0 16 * * 5" # 台灣時間每週五午夜
   workflow_dispatch: # 保留手動觸發按鈕
 
+permissions:
+  contents: write
+
 jobs:
   run-backup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 檢出程式碼
         uses: actions/checkout@v4
@@ -15,9 +18,9 @@ jobs:
           fetch-depth: 0 # 確保能 Push 回去
 
       - name: 設定 Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
       - name: 安裝套件
         run: pip install requests

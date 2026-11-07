@@ -32,7 +32,7 @@ def backup_data():
         if data:
             keys = data[0].keys()
             with open(f'backups/flight_log_latest.csv', 'w', newline='', encoding='utf-8-sig') as f:
-                dict_writer = csv.DictWriter(f, field_keys=keys)
+                dict_writer = csv.DictWriter(f, fieldnames=keys)
                 dict_writer.writeheader()
                 dict_writer.writerows(data)
 
